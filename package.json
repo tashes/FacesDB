@@ -1,15 +1,19 @@
 {
-  "name": "facesdb",
-  "version": "0.0.0",
-  "description": "A local first database with sync capabilities with other instances.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Ashwin Abraham",
-  "license": "MIT",
-  "dependencies": {
-    "chai": "^5.2.0",
-    "dotenv": "^16.5.0"
-  }
+    "name": "facesdb",
+    "version": "0.0.0",
+    "description": "A local first database with sync capabilities with other instances.",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "test": "vitest"
+    },
+    "author": "Ashwin Abraham",
+    "license": "MIT",
+    "dependencies": {
+        "chai": "^5.2.0",
+        "dotenv": "^16.5.0"
+    },
+    "devDependencies": {
+        "vitest": "^3.2.4"
+    }
 }
