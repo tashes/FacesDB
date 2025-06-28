@@ -61,7 +61,7 @@ describe("Normal run", () => {
         expect(appendjsonl).toHaveBeenCalledTimes(1);
         expect(appendjsonl).toHaveBeenNthCalledWith(
             1,
-            JSON.stringify({ _id: "doc1", prop1: "WORKER", prop2: true }),
+            { _id: "doc1", prop1: "WORKER", prop2: true },
             "collectionname",
             "indexname.json",
         );

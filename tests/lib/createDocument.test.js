@@ -78,30 +78,30 @@ describe("Normal run", () => {
         await createDocument(collection, documentobj);
 
         expect(writejson).toHaveBeenCalledWith(
-            JSON.stringify({ ...documentobj, _id: "85a71125F2B7CA61F58DdA0B" }),
+            { ...documentobj, _id: "85a71125F2B7CA61F58DdA0B" },
             "collectionname",
             "85a71125F2B7CA61F58DdA0B.json",
         );
         expect(appendjsonl).toHaveBeenCalledTimes(2);
         expect(appendjsonl).toHaveBeenNthCalledWith(
             1,
-            JSON.stringify({
+            {
                 _id: "85a71125F2B7CA61F58DdA0B",
                 prop1: "HELLO",
                 prop2: 2,
                 prop3: true,
-            }),
+            },
             "collectionname",
             "indexone.jsonl",
         );
         expect(appendjsonl).toHaveBeenNthCalledWith(
             2,
-            JSON.stringify({
+            {
                 _id: "85a71125F2B7CA61F58DdA0B",
                 prop1: "HELLO",
                 prop2: 2,
                 prop4: [200, 3384, 48, 909084],
-            }),
+            },
             "collectionname",
             "indextwo.jsonl",
         );
@@ -152,7 +152,7 @@ describe("Initialization error", () => {
             },
         };
 
-        expect(() =>
+        await expect(() =>
             createDocument(collection, documentobj),
         ).rejects.toThrowError("Cannot start createDocument:Error");
     });
@@ -169,13 +169,25 @@ describe("Initialization error", () => {
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["indexone", "indextwo", "indexthree"]);
+        listCollectionIndexes.mockImplementation(() => [
+            "indexone",
+            "indextwo",
+            "indexthree",
+        ]);
         viewIndexConfig.mockImplementation((_, index) => indexes[index]);
 
         let collection = "collectionname";
-        let documentobj = { prop1: "HELLO", prop2: 2, prop3: true, prop4: [200, 3384, 48, 909084], prop5: { a: "A", x: "X", e: "E" } };
+        let documentobj = {
+            prop1: "HELLO",
+            prop2: 2,
+            prop3: true,
+            prop4: [200, 3384, 48, 909084],
+            prop5: { a: "A", x: "X", e: "E" },
+        };
 
-        await expect(createDocument(collection, documentobj)).rejects.toThrowError("Cannot start createDocument:Error");
+        await expect(
+            createDocument(collection, documentobj),
+        ).rejects.toThrowError("Cannot start createDocument:Error");
     });
 });
 
@@ -225,7 +237,7 @@ describe("Function errors", () => {
             },
         };
 
-        expect(() =>
+        await expect(() =>
             createDocument(collection, documentobj),
         ).rejects.toThrowError("Cannot run createDocument:Error");
     });
@@ -240,15 +252,29 @@ describe("Function errors", () => {
         checkCollection.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
-        writejson.mockImplementation(() => { throw new Error("Error") });
+        writejson.mockImplementation(() => {
+            throw new Error("Error");
+        });
         appendjsonl.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["indexone", "indextwo", "indexthree"]);
+        listCollectionIndexes.mockImplementation(() => [
+            "indexone",
+            "indextwo",
+            "indexthree",
+        ]);
         viewIndexConfig.mockImplementation((_, index) => indexes[index]);
 
         let collection = "collectionname";
-        let documentobj = { prop1: "HELLO", prop2: 2, prop3: true, prop4: [200, 3384, 48, 909084], prop5: { a: "A", x: "X", e: "E" } };
+        let documentobj = {
+            prop1: "HELLO",
+            prop2: 2,
+            prop3: true,
+            prop4: [200, 3384, 48, 909084],
+            prop5: { a: "A", x: "X", e: "E" },
+        };
 
-        await expect(createDocument(collection, documentobj)).rejects.toThrowError("Cannot run createDocument:Error");
+        await expect(
+            createDocument(collection, documentobj),
+        ).rejects.toThrowError("Cannot run createDocument:Error");
     });
 
     test("Should throw error for appendjsonl error", async () => {
@@ -262,14 +288,28 @@ describe("Function errors", () => {
         checkDocumentobj.mockImplementation(() => true);
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
         writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => { throw new Error("Error") });
-        listCollectionIndexes.mockImplementation(() => ["indexone", "indextwo", "indexthree"]);
+        appendjsonl.mockImplementation(() => {
+            throw new Error("Error");
+        });
+        listCollectionIndexes.mockImplementation(() => [
+            "indexone",
+            "indextwo",
+            "indexthree",
+        ]);
         viewIndexConfig.mockImplementation((_, index) => indexes[index]);
 
         let collection = "collectionname";
-        let documentobj = { prop1: "HELLO", prop2: 2, prop3: true, prop4: [200, 3384, 48, 909084], prop5: { a: "A", x: "X", e: "E" } };
+        let documentobj = {
+            prop1: "HELLO",
+            prop2: 2,
+            prop3: true,
+            prop4: [200, 3384, 48, 909084],
+            prop5: { a: "A", x: "X", e: "E" },
+        };
 
-        await expect(createDocument(collection, documentobj)).rejects.toThrowError("Cannot run createDocument:Error");
+        await expect(
+            createDocument(collection, documentobj),
+        ).rejects.toThrowError("Cannot run createDocument:Error");
     });
 
     test("Should throw error for listCollectionIndexes error", async () => {
@@ -284,13 +324,23 @@ describe("Function errors", () => {
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => { throw new Error("Error") });
+        listCollectionIndexes.mockImplementation(() => {
+            throw new Error("Error");
+        });
         viewIndexConfig.mockImplementation((_, index) => indexes[index]);
 
         let collection = "collectionname";
-        let documentobj = { prop1: "HELLO", prop2: 2, prop3: true, prop4: [200, 3384, 48, 909084], prop5: { a: "A", x: "X", e: "E" } };
+        let documentobj = {
+            prop1: "HELLO",
+            prop2: 2,
+            prop3: true,
+            prop4: [200, 3384, 48, 909084],
+            prop5: { a: "A", x: "X", e: "E" },
+        };
 
-        await expect(createDocument(collection, documentobj)).rejects.toThrowError("Cannot run createDocument:Error");
+        await expect(
+            createDocument(collection, documentobj),
+        ).rejects.toThrowError("Cannot run createDocument:Error");
     });
 
     test("Should throw error for viewIndexConfig error", async () => {
@@ -305,12 +355,26 @@ describe("Function errors", () => {
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["indexone", "indextwo", "indexthree"]);
-        viewIndexConfig.mockImplementation(() => { throw new Error("Error") });
+        listCollectionIndexes.mockImplementation(() => [
+            "indexone",
+            "indextwo",
+            "indexthree",
+        ]);
+        viewIndexConfig.mockImplementation(() => {
+            throw new Error("Error");
+        });
 
         let collection = "collectionname";
-        let documentobj = { prop1: "HELLO", prop2: 2, prop3: true, prop4: [200, 3384, 48, 909084], prop5: { a: "A", x: "X", e: "E" } };
+        let documentobj = {
+            prop1: "HELLO",
+            prop2: 2,
+            prop3: true,
+            prop4: [200, 3384, 48, 909084],
+            prop5: { a: "A", x: "X", e: "E" },
+        };
 
-        await expect(createDocument(collection, documentobj)).rejects.toThrowError("Cannot run createDocument:Error");
+        await expect(
+            createDocument(collection, documentobj),
+        ).rejects.toThrowError("Cannot run createDocument:Error");
     });
 });
