@@ -10,6 +10,7 @@ let checkIndexConfig = vi.spyOn(
     await import("../../utils/checks"),
     "checkIndexConfig",
 );
+let writejson = vi.spyOn(await import("../../utils/fs"), "writejson");
 let appendjsonl = vi.spyOn(await import("../../utils/fs"), "appendjsonl");
 let exists = vi.spyOn(await import("../../utils/fs"), "exists");
 let readfile = vi.spyOn(await import("../../utils/fs"), "readfile");
@@ -22,6 +23,7 @@ beforeEach(() => {
     checkCollection.mockClear();
     checkIndex.mockClear();
     checkIndexConfig.mockClear();
+    writejson.mockClear();
     appendjsonl.mockClear();
     exists.mockClear();
     readfile.mockClear();
@@ -45,6 +47,7 @@ describe("Normal run", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
         readfile.mockImplementation((_, filename) =>
@@ -58,12 +61,20 @@ describe("Normal run", () => {
 
         await createIndex(index, config, collection);
 
+        expect(writejson).toHaveBeenCalledWith(
+            {
+                prop1: true,
+                prop2: false,
+            },
+            collection,
+            "indexname.json",
+        );
         expect(appendjsonl).toHaveBeenCalledTimes(1);
         expect(appendjsonl).toHaveBeenNthCalledWith(
             1,
             { _id: "doc1", prop1: "WORKER", prop2: true },
             "collectionname",
-            "indexname.json",
+            "indexname.jsonl",
         );
     });
 
@@ -83,6 +94,7 @@ describe("Normal run", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => true);
         readfile.mockImplementation((_, filename) =>
@@ -117,6 +129,7 @@ describe("Initialization error", () => {
         checkIndex.mockImplementation(() => new Error("Error"));
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
         readfile.mockImplementation((_, filename) =>
@@ -149,6 +162,7 @@ describe("Initialization error", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => new Error("Error"));
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
         readfile.mockImplementation((_, filename) =>
@@ -181,6 +195,7 @@ describe("Initialization error", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => new Error("Error"));
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
         readfile.mockImplementation((_, filename) =>
@@ -199,6 +214,41 @@ describe("Initialization error", () => {
 });
 
 describe("Function errors", () => {
+    test("Should throw error for writejson error", async () => {
+        let files = {
+            doc1: {
+                prop1: "WORKER",
+                prop2: true,
+                prop3: 37,
+            },
+            doc2: {
+                prop4: "MAN",
+                prop8: "WOMAN",
+            },
+        };
+
+        checkIndex.mockImplementation(() => true);
+        checkIndexConfig.mockImplementation(() => true);
+        checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {
+            throw new Error("Error");
+        });
+        appendjsonl.mockImplementation(() => {});
+        exists.mockImplementation(() => false);
+        readfile.mockImplementation((_, filename) =>
+            JSON.stringify(files[filename]),
+        );
+        listCollectionDocuments.mockImplementation(() => Object.keys(files));
+
+        let index = "indexname";
+        let config = { prop1: true, prop2: false };
+        let collection = "collectionname";
+
+        await expect(
+            createIndex(index, config, collection),
+        ).rejects.toThrowError("Cannot run createIndex:Error");
+    });
+
     test("Should throw error for appendjsonl error", async () => {
         let files = {
             doc1: {
@@ -215,6 +265,7 @@ describe("Function errors", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {
             throw new Error("Error");
         });
@@ -249,6 +300,7 @@ describe("Function errors", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => {
             throw new Error("Error");
@@ -283,6 +335,7 @@ describe("Function errors", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
         readfile.mockImplementation(() => {
@@ -303,6 +356,7 @@ describe("Function errors", () => {
         checkIndex.mockImplementation(() => true);
         checkIndexConfig.mockImplementation(() => true);
         checkCollection.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
         readfile.mockImplementation(() =>
