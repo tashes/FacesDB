@@ -2,6 +2,7 @@ import { join } from "path";
 import {
     appendFileSync,
     existsSync,
+    lstatSync,
     readdirSync,
     readFileSync,
     rmSync,
@@ -23,6 +24,14 @@ export function readdir(...parts) {
 
 export function exists(...parts) {
     return existsSync(path(...parts));
+}
+
+export function isFolder(...parts) {
+    return lstatSync(path(...parts)).isDirectory();
+}
+
+export function isFile(...parts) {
+    return lstatSync(path(...parts)).isFile();
 }
 
 export function readfile(...parts) {

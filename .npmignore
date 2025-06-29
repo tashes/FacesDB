@@ -1,0 +1,28 @@
+# Directories
+src/            # Source files, since you're shipping the transpiled code
+node_modules/   # Not necessary, since users will install this themselves
+
+# Build and development only files
+.vscode/        # Visual Studio Code specific settings
+build/          # If you happen to have another build output folder
+coverage/       # Test coverage reports
+tests/          # Test directories if any
+*.log           # Log files, e.g., npm-debug.log
+
+# Configuration files not needed for runtime
+*.tsbuildinfo   # TypeScript incremental build files
+*.spec.js       # Test files, unnecessary for package users
+*.test.js       # Test files, unnecessary for package users
+
+# Miscellaneous
+.DS_Store       # macOS system files
+Thumbs.db       # Windows system files
+*.swp           # Swap files from text editors, like Vim
+
+# Configuration files specific to your development environment
+*.eslint*       # ESLint configurations
+*.prettierrc*   # Prettier configurations if using
+vite.config.js  # Vite build configuration
+
+# Ignore lock files to prevent version conflicts
+package-lock.json # Lock file, not typically part of the package

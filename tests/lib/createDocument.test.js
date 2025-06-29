@@ -10,6 +10,7 @@ let checkDocumentobj = vi.spyOn(
     "checkDocumentobj",
 );
 let newid = vi.spyOn(await import("../../utils/ids"), "newid");
+let exists = vi.spyOn(await import("../../utils/fs"), "exists");
 let writejson = vi.spyOn(await import("../../utils/fs"), "writejson");
 let appendjsonl = vi.spyOn(await import("../../utils/fs"), "appendjsonl");
 let listCollectionIndexes = vi.spyOn(
@@ -25,6 +26,7 @@ beforeEach(() => {
     checkCollection.mockClear();
     checkDocumentobj.mockClear();
     newid.mockClear();
+    exists.mockClear();
     writejson.mockClear();
     appendjsonl.mockClear();
     listCollectionIndexes.mockClear();
@@ -53,6 +55,7 @@ describe("Normal run", () => {
         checkCollection.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
+        exists.mockImplementation(() => false);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         listCollectionIndexes.mockImplementation(() => [
@@ -130,6 +133,7 @@ describe("Initialization error", () => {
         checkCollection.mockImplementation(() => new Error("Error"));
         checkDocumentobj.mockImplementation(() => true);
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
+        exists.mockImplementation(() => false);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         listCollectionIndexes.mockImplementation(() => [
@@ -167,6 +171,7 @@ describe("Initialization error", () => {
         checkCollection.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => new Error("Error"));
         newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
+        exists.mockImplementation(() => false);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         listCollectionIndexes.mockImplementation(() => [
@@ -215,6 +220,7 @@ describe("Function errors", () => {
         newid.mockImplementation(() => {
             throw new Error("Error");
         });
+        exists.mockImplementation(() => false);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         listCollectionIndexes.mockImplementation(() => [
@@ -238,6 +244,42 @@ describe("Function errors", () => {
         };
 
         await expect(() =>
+            createDocument(collection, documentobj),
+        ).rejects.toThrowError("Cannot run createDocument:Error");
+    });
+
+    test("Should throw error for exists error", async () => {
+        let indexes = {
+            indexone: { prop1: true, prop2: true, prop3: false },
+            indextwo: { prop1: true, prop2: false, prop4: false },
+            indexthree: { prop8: true, prop9: false },
+        };
+
+        checkCollection.mockImplementation(() => true);
+        checkDocumentobj.mockImplementation(() => true);
+        newid.mockImplementation(() => "85a71125F2B7CA61F58DdA0B");
+        exists.mockImplementation(() => {
+            throw new Error("Error");
+        });
+        writejson.mockImplementation(() => {});
+        appendjsonl.mockImplementation(() => {});
+        listCollectionIndexes.mockImplementation(() => [
+            "indexone",
+            "indextwo",
+            "indexthree",
+        ]);
+        viewIndexConfig.mockImplementation((_, index) => indexes[index]);
+
+        let collection = "collectionname";
+        let documentobj = {
+            prop1: "HELLO",
+            prop2: 2,
+            prop3: true,
+            prop4: [200, 3384, 48, 909084],
+            prop5: { a: "A", x: "X", e: "E" },
+        };
+
+        await expect(
             createDocument(collection, documentobj),
         ).rejects.toThrowError("Cannot run createDocument:Error");
     });

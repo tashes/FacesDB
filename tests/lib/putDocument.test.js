@@ -14,6 +14,7 @@ let checkDocumentobj = vi.spyOn(
     "checkDocumentobj",
 );
 let exists = vi.spyOn(await import("../../utils/fs"), "exists");
+let isFile = vi.spyOn(await import("../../utils/fs"), "isFile");
 let writejson = vi.spyOn(await import("../../utils/fs"), "writejson");
 let appendjsonl = vi.spyOn(await import("../../utils/fs"), "appendjsonl");
 let deletejsonl = vi.spyOn(await import("../../utils/fs"), "deletejsonl");
@@ -33,6 +34,7 @@ beforeEach(() => {
     checkDocument.mockClear();
     checkDocumentobj.mockClear();
     exists.mockClear();
+    isFile.mockClear();
     writejson.mockClear();
     appendjsonl.mockClear();
     deletejsonl.mockClear();
@@ -59,6 +61,7 @@ describe("Normal run", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -110,6 +113,7 @@ describe("Normal run", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -165,6 +169,7 @@ describe("Normal run", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -226,6 +231,7 @@ describe("Initialization error", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -264,6 +270,7 @@ describe("Initialization error", () => {
         checkDocument.mockImplementation(() => new Error("Error"));
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -302,6 +309,7 @@ describe("Initialization error", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => new Error("Error"));
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -344,6 +352,48 @@ describe("Function errors", () => {
         exists.mockImplementation(() => {
             throw new Error("Error");
         });
+        isFile.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
+        appendjsonl.mockImplementation(() => {});
+        deletejsonl.mockImplementation(() => {});
+        editjsonlraw.mockImplementation(() => {});
+        jsonlexists.mockImplementation(() => false);
+        listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
+        viewIndexConfig.mockImplementation(
+            (_, indexName) => indexes[indexName],
+        );
+
+        const collection = "collectionname";
+        const document = "doc1";
+        const documentobj = {
+            prop1: "value3",
+            prop2: "value4",
+        };
+
+        await expect(
+            putDocument(collection, document, documentobj),
+        ).rejects.toThrowError("Cannot run putDocument:Error");
+    });
+
+    test("Should throw error for isFile error", async () => {
+        let indexes = {
+            indexone: {
+                prop1: true,
+            },
+            indextwo: {
+                prop3: true,
+                prop4: true,
+                prop8: false,
+            },
+        };
+
+        checkCollection.mockImplementation(() => true);
+        checkDocument.mockImplementation(() => true);
+        checkDocumentobj.mockImplementation(() => true);
+        exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => {
+            throw new Error("Error");
+        });
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -382,6 +432,7 @@ describe("Function errors", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {
             throw new Error("Error");
         });
@@ -422,6 +473,7 @@ describe("Function errors", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {
             throw new Error("Error");
@@ -462,6 +514,7 @@ describe("Function errors", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {
@@ -502,6 +555,7 @@ describe("Function errors", () => {
         checkDocument.mockImplementation(() => true);
         checkDocumentobj.mockImplementation(() => true);
         exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         deletejsonl.mockImplementation(() => {});
@@ -526,9 +580,124 @@ describe("Function errors", () => {
         ).rejects.toThrowError("Cannot run putDocument:Error");
     });
 
-    test("Should throw error for jsonlexists error", async () => {});
+    test("Should throw error for jsonlexists error", async () => {
+        let indexes = {
+            indexone: {
+                prop1: true,
+            },
+            indextwo: {
+                prop3: true,
+                prop4: true,
+                prop8: false,
+            },
+        };
 
-    test("Should throw error for listCollectionIndexes error", async () => {});
+        checkCollection.mockImplementation(() => true);
+        checkDocument.mockImplementation(() => true);
+        checkDocumentobj.mockImplementation(() => true);
+        exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
+        appendjsonl.mockImplementation(() => {});
+        deletejsonl.mockImplementation(() => {});
+        editjsonlraw.mockImplementation(() => {});
+        jsonlexists.mockImplementation(() => {
+            throw new Error("Error");
+        });
+        listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
+        viewIndexConfig.mockImplementation(
+            (_, indexName) => indexes[indexName],
+        );
 
-    test("Should throw error for viewIndexConfig error", async () => {});
+        const collection = "collectionname";
+        const document = "doc1";
+        const documentobj = {
+            prop1: "value3",
+            prop2: "value4",
+        };
+
+        await expect(
+            putDocument(collection, document, documentobj),
+        ).rejects.toThrowError("Cannot run putDocument:Error");
+    });
+
+    test("Should throw error for listCollectionIndexes error", async () => {
+        let indexes = {
+            indexone: {
+                prop1: true,
+            },
+            indextwo: {
+                prop3: true,
+                prop4: true,
+                prop8: false,
+            },
+        };
+
+        checkCollection.mockImplementation(() => true);
+        checkDocument.mockImplementation(() => true);
+        checkDocumentobj.mockImplementation(() => true);
+        exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
+        appendjsonl.mockImplementation(() => {});
+        deletejsonl.mockImplementation(() => {});
+        editjsonlraw.mockImplementation(() => {});
+        jsonlexists.mockImplementation(() => false);
+        listCollectionIndexes.mockImplementation(() => {
+            throw new Error("Error");
+        });
+        viewIndexConfig.mockImplementation(
+            (_, indexName) => indexes[indexName],
+        );
+
+        const collection = "collectionname";
+        const document = "doc1";
+        const documentobj = {
+            prop1: "value3",
+            prop2: "value4",
+        };
+
+        await expect(
+            putDocument(collection, document, documentobj),
+        ).rejects.toThrowError("Cannot run putDocument:Error");
+    });
+
+    test("Should throw error for viewIndexConfig error", async () => {
+        let indexes = {
+            indexone: {
+                prop1: true,
+            },
+            indextwo: {
+                prop3: true,
+                prop4: true,
+                prop8: false,
+            },
+        };
+
+        checkCollection.mockImplementation(() => true);
+        checkDocument.mockImplementation(() => true);
+        checkDocumentobj.mockImplementation(() => true);
+        exists.mockImplementation(() => true);
+        isFile.mockImplementation(() => true);
+        writejson.mockImplementation(() => {});
+        appendjsonl.mockImplementation(() => {});
+        deletejsonl.mockImplementation(() => {});
+        editjsonlraw.mockImplementation(() => {});
+        jsonlexists.mockImplementation(() => false);
+        listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
+        viewIndexConfig.mockImplementation(() => {
+            throw new Error("Error");
+        });
+
+        const collection = "collectionname";
+        const document = "doc1";
+        const documentobj = {
+            prop1: "value3",
+            prop2: "value4",
+        };
+
+        await expect(
+            putDocument(collection, document, documentobj),
+        ).rejects.toThrowError("Cannot run putDocument:Error");
+    });
 });

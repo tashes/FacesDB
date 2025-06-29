@@ -1,19 +1,38 @@
 {
     "name": "facesdb",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "description": "A local first database with sync capabilities with other instances.",
-    "main": "index.js",
     "type": "module",
+    "main": "dist/facesdb.umd.js",
+    "module": "dist/facesdb.es.js",
+    "exports": {
+        ".": {
+            "import": "./dist/facesdb.es.js",
+            "require": "./dist/facesdb.umd.js"
+        }
+    },
+    "files": [
+        "dist"
+    ],
     "scripts": {
+        "build": "vite build",
         "test": "vitest"
     },
     "author": "Ashwin Abraham",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/yourrepository.git"
+    },
+    "bugs": {
+        "url": "https://github.com/yourusername/yourrepository/issues"
+    },
     "dependencies": {
         "chai": "^5.2.0",
         "dotenv": "^16.5.0"
     },
     "devDependencies": {
+        "vite": "^7.0.0",
         "vitest": "^3.2.4"
     }
 }
