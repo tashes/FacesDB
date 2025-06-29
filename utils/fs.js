@@ -3,6 +3,7 @@ import {
     appendFileSync,
     existsSync,
     lstatSync,
+    mkdirSync,
     readdirSync,
     readFileSync,
     rmSync,
@@ -32,6 +33,10 @@ export function isFolder(...parts) {
 
 export function isFile(...parts) {
     return lstatSync(path(...parts)).isFile();
+}
+
+export function createFolder(...parts) {
+    mkdirSync(path(...parts));
 }
 
 export function readfile(...parts) {

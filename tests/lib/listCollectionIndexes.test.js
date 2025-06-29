@@ -27,7 +27,7 @@ describe("Normal run", () => {
         const indexes = await listCollectionIndexes(collection);
 
         // Assuming INDEXNAME is expected to match the whole filename or part of it
-        expect(indexes).toEqual(["indexone.json", "indextwo.json"]);
+        expect(indexes).toEqual(["indexone", "indextwo"]);
         expect(readdir).toHaveBeenCalledWith(collection);
     });
 });

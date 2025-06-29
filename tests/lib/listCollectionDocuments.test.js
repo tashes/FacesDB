@@ -26,8 +26,8 @@ describe("Normal run", () => {
         const documents = await listCollectionDocuments(collection);
 
         expect(documents).toEqual([
-            "F647C977aBDD53D8eDdccDDd.json",
-            "Ba9DEcc6eD0Ad34e51482f3d.json",
+            "F647C977aBDD53D8eDdccDDd",
+            "Ba9DEcc6eD0Ad34e51482f3d",
         ]);
         expect(readdir).toHaveBeenCalledWith(collection);
     });
