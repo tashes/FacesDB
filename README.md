@@ -64,7 +64,7 @@ console.log(updateddocument);
 await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 ```
 
-The full docs can be found at: [TODO]()
+The full docs can be found [here](https://github.com/tashes/FacesDB/wiki)
 
 ## Contributing
 

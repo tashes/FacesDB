@@ -1,6 +1,6 @@
 {
     "name": "facesdb",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "description": "A local first database with sync capabilities with other instances.",
     "type": "module",
     "main": "dist/facesdb.umd.js",
@@ -22,10 +22,10 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/yourusername/yourrepository.git"
+        "url": "https://github.com/tashes/FacesDB.git"
     },
     "bugs": {
-        "url": "https://github.com/yourusername/yourrepository/issues"
+        "url": "https://github.com/tashes/FacesDB/issues"
     },
     "dependencies": {
         "chai": "^5.2.0",
