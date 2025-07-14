@@ -63,7 +63,7 @@ describe("Normal run", () => {
             "indextwo",
             "indexthree",
         ]);
-        viewIndexConfig.mockImplementation((_, index) => indexes[index]);
+        viewIndexConfig.mockImplementation((index, _) => indexes[index]);
 
         let collection = "collectionname";
         let documentobj = {

@@ -1,17 +1,22 @@
+import os from "os";
 import { join } from "path";
 import {
     appendFileSync,
+    createReadStream,
+    createWriteStream,
     existsSync,
     lstatSync,
     mkdirSync,
     readdirSync,
     readFileSync,
+    renameSync,
     rmSync,
     writeFileSync,
 } from "fs";
+import readline from "readline";
 
-import { env } from "./env";
-import { Wrap } from "./errors";
+import { env } from "./env.js";
+import { Wrap } from "./errors.js";
 
 export function path(...parts) {
     let root = env("FS");
@@ -48,13 +53,13 @@ export function writejson(obj, ...parts) {
 }
 
 export function appendjsonl(obj, ...parts) {
-    return appendFileSync(path(...parts), JSON.stringify(obj));
+    return appendFileSync(path(...parts), JSON.stringify(obj) + "\n");
 }
 
 export async function deletejsonl(id, ...parts) {
-    const tempPath = path.join(os.tmpdir(), `temp-${Date.now()}.jsonl`);
-    const input = fs.createReadStream(path(...parts));
-    const output = fs.createWriteStream(tempPath);
+    const tempPath = join(os.tmpdir(), `temp-${Date.now()}.jsonl`);
+    const input = createReadStream(path(...parts));
+    const output = createWriteStream(tempPath);
     const rl = readline.createInterface({ input });
 
     for await (const line of rl) {
@@ -64,14 +69,14 @@ export async function deletejsonl(id, ...parts) {
                 output.write(line + "\n");
             }
         } catch (err) {
-            Wrap("Cannot run deletejsonl", err);
+            throw Wrap("Cannot run deletejsonl", err);
         }
     }
 
     rl.close();
     output.end();
     await new Promise((resolve) => output.on("finish", resolve));
-    fs.renameSync(tempPath, path(...parts));
+    renameSync(tempPath, path(...parts));
 }
 
 export async function editjsonl(id, obj, ...parts) {
@@ -89,7 +94,7 @@ export async function editjsonl(id, obj, ...parts) {
                 output.write(line + "\n");
             }
         } catch (err) {
-            Wrap("Cannot run editjsonl", err);
+            throw Wrap("Cannot run editjsonl", err);
         }
     }
 
@@ -100,9 +105,9 @@ export async function editjsonl(id, obj, ...parts) {
 }
 
 export async function editjsonlraw(id, obj, ...parts) {
-    const tempPath = path.join(os.tmpdir(), `temp-${Date.now()}.jsonl`);
-    const input = fs.createReadStream(path(...parts));
-    const output = fs.createWriteStream(tempPath);
+    const tempPath = join(os.tmpdir(), `temp-${Date.now()}.jsonl`);
+    const input = createReadStream(path(...parts));
+    const output = createWriteStream(tempPath);
     const rl = readline.createInterface({ input });
 
     for await (const line of rl) {
@@ -114,18 +119,18 @@ export async function editjsonlraw(id, obj, ...parts) {
                 output.write(line + "\n");
             }
         } catch (err) {
-            Wrap("Cannot run editjsonl", err);
+            throw Wrap("Cannot run editjsonl", err);
         }
     }
 
     rl.close();
     output.end();
     await new Promise((resolve) => output.on("finish", resolve));
-    fs.renameSync(tempPath, path(...parts));
+    renameSync(tempPath, path(...parts));
 }
 
 export async function jsonlexists(id, ...parts) {
-    const input = fs.createReadStream(path(...parts));
+    const input = createReadStream(path(...parts));
     const rl = readline.createInterface({ input });
 
     for await (const line of rl) {
@@ -144,7 +149,7 @@ export async function jsonlexists(id, ...parts) {
 
 export async function pulljsonl(from, to, ...parts) {
     const objects = [];
-    const input = fs.createReadStream(path(...parts));
+    const input = createReadStream(path(...parts));
     const rl = readline.createInterface({ input });
 
     let currentLine = from;
@@ -156,7 +161,7 @@ export async function pulljsonl(from, to, ...parts) {
                 const obj = JSON.parse(line);
                 objects.push(obj);
             } catch (err) {
-                Wrap("Cannot run pulljsonl", err);
+                throw Wrap("Cannot run pulljsonl", err);
             }
         }
         if (currentLine > to) {
@@ -167,6 +172,22 @@ export async function pulljsonl(from, to, ...parts) {
     rl.close();
     input.destroy();
     return objects;
+}
+
+export async function forjsonl(fn = () => {}, stop = () => {}, ...parts) {
+    const input = createReadStream(path(...parts));
+    const rl = readline.createInterface({ input });
+    for await (const line of rl) {
+        if (stop() === true) break;
+        try {
+            const obj = JSON.parse(line);
+            fn(obj);
+        } catch (err) {
+            throw Wrap("Cannot run forjsonl", err);
+        }
+    }
+    rl.close();
+    input.destroy();
 }
 
 export function rm(...parts) {

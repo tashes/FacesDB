@@ -1,14 +1,16 @@
-export { list } from "./lib/list";
-export { deleteCollection } from "./lib/deleteCollection";
+export { list } from "./lib/list.js";
+export { createCollection } from "./lib/createCollection.js";
+export { deleteCollection } from "./lib/deleteCollection.js";
 
-export { listCollectionDocuments } from "./lib/listCollectionDocuments";
-export { createDocument } from "./lib/createDocument";
-export { viewDocument } from "./lib/viewDocument";
-export { putDocument } from "./lib/putDocument";
-export { deleteDocument } from "./lib/deleteDocument";
+export { listCollectionDocuments } from "./lib/listCollectionDocuments.js";
+export { createDocument } from "./lib/createDocument.js";
+export { viewDocument } from "./lib/viewDocument.js";
+export { putDocument } from "./lib/putDocument.js";
+export { deleteDocument } from "./lib/deleteDocument.js";
 
-export { listCollectionIndexes } from "./lib/listCollectionIndexes";
-export { createIndex } from "./lib/createIndex";
-export { viewIndex } from "./lib/viewIndex";
-export { viewIndexConfig } from "./lib/viewIndexConfig";
-export { deleteIndex } from "./lib/deleteIndex";
+export { listCollectionIndexes } from "./lib/listCollectionIndexes.js";
+export { createIndex } from "./lib/createIndex.js";
+export { viewIndex } from "./lib/viewIndex.js";
+export { viewIndexConfig } from "./lib/viewIndexConfig.js";
+export { deleteIndex } from "./lib/deleteIndex.js";
+export { searchIndex } from "./lib/searchIndex.js";

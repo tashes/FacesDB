@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { COLLECTIONNAME, DOCUMENTID, INDEXNAME } from "./constants";
-import { List } from "./errors";
+import { COLLECTIONNAME, DOCUMENTID, INDEXNAME } from "./constants.js";
+import { List } from "./errors.js";
 
 export function isDefined(value) {
     try {
@@ -33,7 +33,7 @@ export function checkDocument(value) {
 
 export function checkDocumentobj(value) {
     try {
-        expect(value).to.be.an(object);
+        expect(value).to.be.an("object");
         expect(Object.keys(value).every((key) => typeof key === "string")).to.be
             .true;
     } catch (e) {
@@ -97,6 +97,15 @@ export function checkPageNumber(value) {
     try {
         expect(value).to.be.a("number");
         expect(value).to.be.greaterThanOrEqual(0);
+    } catch (e) {
+        return e;
+    }
+    return true;
+}
+
+export function checkFn(value) {
+    try {
+        expect(value).to.be.a("function");
     } catch (e) {
         return e;
     }

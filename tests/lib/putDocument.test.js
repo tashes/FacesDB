@@ -69,7 +69,7 @@ describe("Normal run", () => {
         jsonlexists.mockImplementation(() => false);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
         viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
+            (indexName, _) => indexes[indexName],
         );
 
         const collection = "collectionname";
@@ -121,7 +121,7 @@ describe("Normal run", () => {
         jsonlexists.mockImplementation(() => true);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
         viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
+            (indexName, _) => indexes[indexName],
         );
 
         const collection = "collectionname";
@@ -177,7 +177,7 @@ describe("Normal run", () => {
         jsonlexists.mockImplementation(() => true);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
         viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
+            (indexName, _) => indexes[indexName],
         );
 
         const collection = "collectionname";
@@ -359,9 +359,7 @@ describe("Function errors", () => {
         editjsonlraw.mockImplementation(() => {});
         jsonlexists.mockImplementation(() => false);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -400,9 +398,7 @@ describe("Function errors", () => {
         editjsonlraw.mockImplementation(() => {});
         jsonlexists.mockImplementation(() => false);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -441,9 +437,7 @@ describe("Function errors", () => {
         editjsonlraw.mockImplementation(() => {});
         jsonlexists.mockImplementation(() => false);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -482,9 +476,7 @@ describe("Function errors", () => {
         editjsonlraw.mockImplementation(() => {});
         jsonlexists.mockImplementation(() => false);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -523,9 +515,7 @@ describe("Function errors", () => {
         editjsonlraw.mockImplementation(() => {});
         jsonlexists.mockImplementation(() => true);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -564,9 +554,7 @@ describe("Function errors", () => {
         });
         jsonlexists.mockImplementation(() => true);
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -605,9 +593,7 @@ describe("Function errors", () => {
             throw new Error("Error");
         });
         listCollectionIndexes.mockImplementation(() => Object.keys(indexes));
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";
@@ -646,9 +632,7 @@ describe("Function errors", () => {
         listCollectionIndexes.mockImplementation(() => {
             throw new Error("Error");
         });
-        viewIndexConfig.mockImplementation(
-            (_, indexName) => indexes[indexName],
-        );
+        viewIndexConfig.mockImplementation((indexName) => indexes[indexName]);
 
         const collection = "collectionname";
         const document = "doc1";

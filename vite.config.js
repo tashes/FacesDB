@@ -9,9 +9,18 @@ export default defineConfig({
             fileName: (format) => `facesdb.${format}.js`,
             formats: ["es", "cjs"],
         },
+        target: "node23",
         rollupOptions: {
             // Ensure to externalize dependencies not intended to be bundled
-            external: ["chai", "dotenv", "path", "fs", "crypto"],
+            external: [
+                "chai",
+                "dotenv",
+                "path",
+                "fs",
+                "crypto",
+                "os",
+                "readline",
+            ],
             output: {
                 globals: {
                     chai: "chai",

@@ -50,9 +50,9 @@ describe("Normal run", () => {
         writejson.mockImplementation(() => {});
         appendjsonl.mockImplementation(() => {});
         exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
+        readfile.mockImplementation((_, filename) => {
+            return JSON.stringify(files[filename.split(".")[0]]);
+        });
         listCollectionDocuments.mockImplementation(() => Object.keys(files));
 
         let index = "indexname";
@@ -271,7 +271,7 @@ describe("Function errors", () => {
         });
         exists.mockImplementation(() => false);
         readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
+            JSON.stringify(files[filename.split(".")[0]]),
         );
         listCollectionDocuments.mockImplementation(() => Object.keys(files));
 
