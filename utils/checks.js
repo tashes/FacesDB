@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { COLLECTIONNAME, DOCUMENTID, INDEXNAME } from "./constants.js";
+import {
+    BUCKETID,
+    COLLECTIONNAME,
+    DOCUMENTID,
+    INDEXNAME,
+} from "./constants.js";
 import { List } from "./errors.js";
 
 export function isDefined(value) {
@@ -106,6 +111,31 @@ export function checkPageNumber(value) {
 export function checkFn(value) {
     try {
         expect(value).to.be.a("function");
+    } catch (e) {
+        return e;
+    }
+    return true;
+}
+
+export function checkObject(value) {
+    try {
+        expect(value).to.satisfy(
+            (val) =>
+                val !== undefined &&
+                val !== null &&
+                !(typeof val === "number" && isNaN(val)) &&
+                (val || val === 0),
+        );
+    } catch (e) {
+        return e;
+    }
+    return true;
+}
+
+export function checkBucketId(value) {
+    try {
+        expect(value).to.be.a("string");
+        expect(value).to.match(BUCKETID);
     } catch (e) {
         return e;
     }

@@ -3,3 +3,5 @@ package-lock.json
 dist
 trial
 trial.js
+example.pdf
+.DS_Store

@@ -48,6 +48,10 @@ export function readfile(...parts) {
     return readFileSync(path(...parts));
 }
 
+export function writefile(obj, ...parts) {
+    writeFileSync(path(...parts), obj);
+}
+
 export function writejson(obj, ...parts) {
     return writeFileSync(path(...parts), JSON.stringify(obj));
 }
