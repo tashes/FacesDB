@@ -16,3 +16,5 @@ export { deleteIndex } from "./lib/deleteIndex.js";
 export { searchIndex } from "./lib/searchIndex.js";
 
 export { saveToBucket } from "./lib/saveToBucket.js";
+export { viewInBucket } from "./lib/viewInBucket.js";
+export { deleteFromBucket } from "./lib/deleteFromBucket.js";
