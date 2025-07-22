@@ -1,18 +1,21 @@
 {
     "name": "facesdb",
-    "version": "0.0.11",
+    "version": "0.0.12",
     "description": "A local first database with sync capabilities with other instances.",
     "type": "module",
     "main": "dist/facesdb.umd.js",
     "module": "dist/facesdb.es.js",
+    "types": "index.d.ts",
     "exports": {
         ".": {
             "import": "./dist/facesdb.es.js",
-            "require": "./dist/facesdb.umd.js"
+            "require": "./dist/facesdb.umd.js",
+            "types": "./index.d.ts"
         }
     },
     "files": [
-        "dist"
+        "dist",
+        "index.d.ts"
     ],
     "scripts": {
         "build": "vite build",
