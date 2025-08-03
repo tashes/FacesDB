@@ -1,6 +1,6 @@
 {
     "name": "facesdb",
-    "version": "0.0.15",
+    "version": "0.0.16",
     "description": "A local first database with sync capabilities with other instances.",
     "type": "module",
     "main": "dist/facesdb.umd.js",
