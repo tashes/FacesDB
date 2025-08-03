@@ -27,7 +27,7 @@ export function deleteDocument(
     document: string,
 ): Promise<void>;
 
-export function saveInBucket(
+export function saveToBucket(
     collection: string,
     object: unknown,
 ): Promise<string>;
