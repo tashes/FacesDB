@@ -163,7 +163,7 @@ export async function pulljsonl(from, to, ...parts) {
         if (currentLine >= from && currentLine <= to) {
             try {
                 const obj = JSON.parse(line);
-                objects.push(obj);
+                if (typeof obj === "object") objects.push(obj);
             } catch (err) {
                 throw Wrap("Cannot run pulljsonl", err);
             }
