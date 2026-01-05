@@ -64,6 +64,25 @@ console.log(updateddocument);
 await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 ```
 
+### Migrations
+
+FacesDB can enforce a consistent document shape across an entire collection with the `migrate` helper. Pass the collection name and a callback that receives each document and returns its new shape.
+
+```javascript
+import { migrate } from "facesdb"
+
+await migrate("users", (user) => ({
+    ...user,
+    isActive: true,
+}))
+```
+
+Rules for migrations:
+
+- The callback must return an object that contains the **same `_id`** as the incoming document.
+- Only documents whose contents change are rewritten; untouched documents are left as-is.
+- Updates are transactional: FacesDB writes all new versions to a temporary folder, swaps them into place, rebuilds indexes, and removes the folder. Any error restores the original files.
+
 The full docs can be found [here](https://github.com/tashes/FacesDB/wiki)
 
 ## Contributing

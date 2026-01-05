@@ -11,6 +11,7 @@ let checkIndexConfig = vi.spyOn(
     "checkIndexConfig",
 );
 let writejson = vi.spyOn(await import("../../utils/fs"), "writejson");
+let writefile = vi.spyOn(await import("../../utils/fs"), "writefile");
 let appendjsonl = vi.spyOn(await import("../../utils/fs"), "appendjsonl");
 let exists = vi.spyOn(await import("../../utils/fs"), "exists");
 let readfile = vi.spyOn(await import("../../utils/fs"), "readfile");
@@ -24,10 +25,13 @@ beforeEach(() => {
     checkIndex.mockClear();
     checkIndexConfig.mockClear();
     writejson.mockClear();
+    writefile.mockClear();
     appendjsonl.mockClear();
     exists.mockClear();
     readfile.mockClear();
     listCollectionDocuments.mockClear();
+
+    writefile.mockImplementation(() => {});
 });
 
 describe("Normal run", () => {
