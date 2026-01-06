@@ -64,3 +64,8 @@ export function viewIndexConfig(
 ): Promise<Record<string, boolean>>;
 
 export function deleteIndex(index: string, collection: string): Promise<void>;
+
+export function setKV<T = unknown>(key: string, value: T): Promise<T>;
+export function getKV<T = unknown>(key: string): Promise<T | undefined>;
+export function deleteKV(key: string): Promise<boolean>;
+export function hasKV(key: string): Promise<boolean>;

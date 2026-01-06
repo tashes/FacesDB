@@ -19,4 +19,6 @@ export { saveToBucket } from "./lib/saveToBucket.js"
 export { viewInBucket } from "./lib/viewInBucket.js"
 export { deleteFromBucket } from "./lib/deleteFromBucket.js"
 
+export { setKV, getKV, deleteKV, hasKV } from './lib/keyValueStore.js'
+
 export { migrate } from "./lib/migrate.js"

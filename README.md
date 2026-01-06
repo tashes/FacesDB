@@ -64,6 +64,24 @@ console.log(updateddocument);
 await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 ```
 
+### Key-Value Store
+
+FacesDB ships with a lightweight, Redis-like key:value store that keeps data in memory for fast access while persisting every change to the FacesDB data directory.
+
+```javascript
+import { setKV, getKV, deleteKV, hasKV } from "facesdb"
+
+await setKV("session:user:42", { userId: 42, flags: ["beta"] })
+
+const session = await getKV("session:user:42")
+// { userId: 42, flags: ["beta"] }
+
+const isCached = await hasKV("session:user:42") // true
+await deleteKV("session:user:42")
+```
+
+Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
+
 ### Migrations
 
 FacesDB can enforce a consistent document shape across an entire collection with the `migrate` helper. Pass the collection name and a callback that receives each document and returns its new shape.
