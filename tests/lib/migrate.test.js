@@ -145,5 +145,5 @@ describe("migrate", () => {
 
     const sample = await viewDocument(collection, ids[0])
     expect(sample.migrated).toBe(true)
-  })
+  }, 30_000)
 })

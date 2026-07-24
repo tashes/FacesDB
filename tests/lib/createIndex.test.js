@@ -1,6 +1,7 @@
 import {
     mkdirSync,
     mkdtempSync,
+    existsSync,
     readFileSync,
     readdirSync,
     rmSync,
@@ -11,6 +12,7 @@ import { join } from "path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { createIndex } from "../../lib/createIndex.js";
+import { putDocument } from "../../lib/putDocument.js";
 
 const originalRoot = process.env.FS;
 let root;
@@ -68,6 +70,28 @@ describe("createIndex", () => {
             .split("\n");
         expect(lines).toHaveLength(5_000);
     });
+
+    test("journals document changes made while an index is building", async () => {
+        const target = writeDocument(0, { score: 0 });
+        for (let index = 1; index < 5_000; index += 1) {
+            writeDocument(index, { score: index });
+        }
+        const building = createIndex("scores", { score: true }, "people");
+        const marker = join(collection, ".scores.building.json");
+        while (existsSync(marker) === false) {
+            await new Promise((resolve) => setTimeout(resolve, 1));
+        }
+        await putDocument("people", target, { score: 99_999 });
+        await building;
+
+        const entry = readFileSync(join(collection, "scores.jsonl"), "utf8")
+            .split("\n")
+            .filter(Boolean)
+            .map(JSON.parse)
+            .find((candidate) => candidate._id === target);
+        expect(entry.score).toBe(99_999);
+        expect(existsSync(marker)).toBe(false);
+    }, 10_000);
 
     test("rejects an existing index without changing it", async () => {
         writeFileSync(join(collection, "names.json"), JSON.stringify({ old: true }));
