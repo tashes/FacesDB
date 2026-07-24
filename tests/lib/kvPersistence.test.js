@@ -120,6 +120,19 @@ describe("KVWalPersistence", () => {
     })
   })
 
+  test("keeps cached state hot after its own background compaction", async () => {
+    const root = temporaryRoot()
+    const persistence = new KVWalPersistence(root, { compactRecords: 2 })
+    await persistence.initialize()
+    const loadState = vi.spyOn(persistence, "loadState")
+    await persistence.commit([{ type: "set", key: "one", value: 1 }])
+    await persistence.commit([{ type: "set", key: "two", value: 2 }])
+    await persistence.compaction
+
+    expect((await persistence.read()).store.get("two")).toBe(2)
+    expect(loadState).not.toHaveBeenCalled()
+  })
+
   test("preserves commits racing background compaction", async () => {
     const root = temporaryRoot()
     const persistence = new KVWalPersistence(root)
