@@ -64,6 +64,81 @@ export function appendjsonl(obj, ...parts) {
     return appendFileSync(path(...parts), JSON.stringify(obj) + "\n");
 }
 
+function syncFolder(directory) {
+    const descriptor = openSync(directory, "r");
+    try {
+        fsyncSync(descriptor);
+    } finally {
+        closeSync(descriptor);
+    }
+}
+
+export function openjsonlwriter(...parts) {
+    const destination = path(...parts);
+    const directory = dirname(destination);
+    const temporary = join(
+        directory,
+        `.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    let descriptor = openSync(temporary, "wx");
+    let buffer = "";
+    let finished = false;
+
+    function flush() {
+        if (buffer.length === 0) return;
+        writeFileSync(descriptor, buffer);
+        buffer = "";
+    }
+
+    return {
+        write(obj) {
+            if (finished) throw new Error("JSONL writer is closed");
+            buffer += `${JSON.stringify(obj)}\n`;
+            if (buffer.length >= 1024 * 1024) flush();
+        },
+        commit() {
+            if (finished) throw new Error("JSONL writer is closed");
+            flush();
+            fsyncSync(descriptor);
+            closeSync(descriptor);
+            descriptor = undefined;
+            renameSync(temporary, destination);
+            syncFolder(directory);
+            finished = true;
+        },
+        abort() {
+            if (finished) return;
+            if (descriptor !== undefined) closeSync(descriptor);
+            descriptor = undefined;
+            rmSync(temporary, { force: true });
+            finished = true;
+        },
+    };
+}
+
+export function atomicwritejson(obj, ...parts) {
+    const destination = path(...parts);
+    const directory = dirname(destination);
+    const temporary = join(
+        directory,
+        `.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    let descriptor;
+    try {
+        descriptor = openSync(temporary, "wx");
+        writeFileSync(descriptor, JSON.stringify(obj));
+        fsyncSync(descriptor);
+        closeSync(descriptor);
+        descriptor = undefined;
+        renameSync(temporary, destination);
+        syncFolder(directory);
+    } catch (err) {
+        if (descriptor !== undefined) closeSync(descriptor);
+        rmSync(temporary, { force: true });
+        throw err;
+    }
+}
+
 export function replacejsonl(objs, ...parts) {
     const destination = path(...parts);
     const directory = dirname(destination);
