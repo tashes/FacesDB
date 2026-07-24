@@ -109,3 +109,28 @@ export function deleteManyKV(
 ): Promise<boolean[]>;
 export function hasKV(key: string): Promise<boolean>;
 export function observeKVLocks(listener: (event: KVLockEvent) => void): () => void;
+
+export interface SegmentMutationOptions extends KVMutationOptions {
+    nodeId?: string;
+}
+export interface SegmentImportResult {
+    segment: string | null;
+    count: number;
+}
+export function importDocuments<T extends object>(
+    collection: string,
+    documents: Iterable<T> | AsyncIterable<T>,
+    options?: SegmentMutationOptions,
+): Promise<SegmentImportResult>;
+export function deleteSegmentDocuments(
+    collection: string,
+    documentIds: Iterable<string> | AsyncIterable<string>,
+    options?: SegmentMutationOptions,
+): Promise<SegmentImportResult>;
+export function refreshCollectionIndex(
+    collection: string,
+): Promise<{ segments: number }>;
+export function viewSegmentDocument<T = Record<string, unknown>>(
+    collection: string,
+    document: string,
+): Promise<(T & { _id: string }) | undefined>;
