@@ -1,12 +1,16 @@
 import os from "os";
-import { join } from "path";
+import { randomUUID } from "crypto";
+import { basename, dirname, join } from "path";
 import {
     appendFileSync,
+    closeSync,
     createReadStream,
     createWriteStream,
     existsSync,
+    fsyncSync,
     lstatSync,
     mkdirSync,
+    openSync,
     readdirSync,
     readFileSync,
     renameSync,
@@ -58,6 +62,34 @@ export function writejson(obj, ...parts) {
 
 export function appendjsonl(obj, ...parts) {
     return appendFileSync(path(...parts), JSON.stringify(obj) + "\n");
+}
+
+export function replacejsonl(objs, ...parts) {
+    const destination = path(...parts);
+    const directory = dirname(destination);
+    const temporary = join(
+        directory,
+        `.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    const contents = objs.length === 0
+        ? ""
+        : `${objs.map((obj) => JSON.stringify(obj)).join("\n")}\n`;
+    let descriptor;
+
+    try {
+        descriptor = openSync(temporary, "wx");
+        writeFileSync(descriptor, contents);
+        fsyncSync(descriptor);
+        closeSync(descriptor);
+        descriptor = undefined;
+        renameSync(temporary, destination);
+    } catch (e) {
+        if (descriptor !== undefined) {
+            closeSync(descriptor);
+        }
+        rmSync(temporary, { force: true });
+        throw e;
+    }
 }
 
 export async function deletejsonl(id, ...parts) {

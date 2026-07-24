@@ -64,6 +64,25 @@ console.log(updateddocument);
 await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 ```
 
+### Ranked Indexes
+
+Use `rankIndex` to reorder every entry in an existing index. An optional exclusion
+callback removes matching entries before the remaining entries are sorted.
+
+```javascript
+import { rankIndex } from "facesdb"
+
+await rankIndex(
+    "scores",
+    "players",
+    (a, b) => b.score - a.score,
+    (player) => player.disqualified === true,
+)
+```
+
+Ranking replaces the index atomically. If reading, filtering, sorting, or writing
+fails, the existing index is left in place.
+
 ### Key-Value Store
 
 FacesDB ships with a lightweight, Redis-like key:value store that keeps data in memory for fast access while persisting every change to the FacesDB data directory.

@@ -58,6 +58,13 @@ export function searchIndex(
     pageNumber?: number,
 ): Promise<Array<{ _id: string; [key: string]: unknown }>>;
 
+export function rankIndex<T extends Record<string, any> = Record<string, any>>(
+    index: string,
+    collection: string,
+    sorter: (a: T, b: T) => number,
+    exclusion?: (entry: T) => boolean,
+): Promise<void>;
+
 export function viewIndexConfig(
     index: string,
     collection: string,
