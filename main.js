@@ -26,6 +26,7 @@ export {
   getKV,
   deleteKV,
   deleteManyKV,
+  importManyKV,
   hasKV,
 } from './lib/keyValueStore.js'
 export { observeKVLocks } from './lib/kvLockScheduler.js'

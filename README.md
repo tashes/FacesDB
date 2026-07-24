@@ -129,6 +129,19 @@ Values must be JSON-serializable so they can be safely written to disk, and ever
 Batch mutations validate all inputs before changing the store and persist the entire batch in
 one atomic commit.
 
+For inputs too large to retain along with an input-aligned result array, `importManyKV` consumes
+an iterable in bounded atomic batches and returns counts instead:
+
+```javascript
+import { importManyKV } from "facesdb"
+
+const result = await importManyKV(sourceAsyncIterable, { batchSize: 10_000 })
+// { count: 1_000_000, batches: 100 }
+```
+
+Each chunk is atomic; a later validation or persistence error does not roll back chunks that were
+already committed.
+
 Existing `.kvstore` files are migrated automatically and retained as `.kvstore.legacy`.
 
 Mutations are scheduled in strict arrival order for each key, including across Node.js processes

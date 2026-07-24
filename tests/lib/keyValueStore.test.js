@@ -285,4 +285,21 @@ describe("keyValueStore", () => {
       }
     }
   })
+
+  test("streams large KV imports in bounded atomic WAL batches", async () => {
+    const { readWal } = await import('../../lib/kvPersistence.js')
+    const { getKV, importManyKV } = await loadStore()
+    async function* entries() {
+      for (let index = 0; index < 25; index += 1) {
+        yield [`stream-${index}`, { index }]
+      }
+    }
+
+    expect(await importManyKV(entries(), { batchSize: 10 })).toEqual({
+      count: 25,
+      batches: 3,
+    })
+    expect(readWal(join(testRoot, ".kvstore.wal"))).toHaveLength(3)
+    expect(await getKV("stream-24")).toEqual({ index: 24 })
+  })
 })
