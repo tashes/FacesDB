@@ -113,19 +113,39 @@ const indexed = await findIndexEntry(
 
 ### Key-Value Store
 
-FacesDB ships with a lightweight, Redis-like key:value store. Every acknowledged change is
-durably appended to a checksummed write-ahead log in the FacesDB data directory. Periodic
-snapshots keep startup fast, and process-safe key locks serialize changes to the same key while
-allowing unrelated keys in separate local Node.js processes to proceed independently.
+FacesDB ships with a restart-persistent, rebuildable key:value cache. Cache data lives in the
+Git-ignored `.kvstore-cache` directory and is divided into calculated lookup partitions. Each
+Node.js process owns its append-only writer logs, so normal operations never take a partition-wide
+lock. Cross-process FIFO locks are scoped to the individual key: reads wait for an active write to
+that key while unrelated keys proceed concurrently.
+
+```text
+.kvstore-cache/
+├── manifest.json
+└── partitions/
+    └── 7f/
+        ├── CURRENT
+        ├── base-<generation>.jsonl
+        ├── base-<generation>.lookup
+        └── writers/
+            ├── <next-process>.active.jsonl
+            └── <worker-process>.active.jsonl
+```
+
+Partitions are storage divisions, not lock scopes. Each process writes only to its own log.
+Compaction publishes immutable base generations and retires old logs after a grace period.
 
 ```javascript
 import {
     setKV,
     setManyKV,
     getKV,
+    getManyKV,
     deleteKV,
     deleteManyKV,
     hasKV,
+    hasManyKV,
+    updateKV,
 } from "facesdb"
 
 await setKV("session:user:42", { userId: 42, flags: ["beta"] })
@@ -142,6 +162,9 @@ await setKV("cache:homepage", { generatedAt: Date.now() }, {
     namespace: "cache",
 })
 
+// Buffered persistence is the cache-oriented default. Request an fsync when required.
+await setKV("important-cache-key", { retained: true }, { durability: "sync" })
+
 await setManyKV([
     ["session:user:42", { userId: 42 }],
     ["session:user:84", { userId: 84 }],
@@ -151,11 +174,21 @@ const deleted = await deleteManyKV([
     "session:user:42",
     "session:user:84",
 ]) // [true, true]
+
+const cached = await getManyKV(["session:user:42", "missing"])
+// [{ userId: 42 }, undefined]
+
+await updateKV("article:42:views", (views = 0) => views + 1)
 ```
 
+`updateKV` and `updateDocument` callbacks must be synchronous and quick. Perform expensive work
+first; use `getVersionedKV` and `compareAndSetKV` when a calculated result must be rejected if the
+state it was based on has changed.
+
 Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
-Batch mutations validate all inputs before changing the store and persist the entire batch in
-one atomic commit.
+Batch mutations validate all inputs before changing the cache, lock unique keys in deterministic
+order, and preserve input-aligned results. Atomicity is per key/partition rather than a global
+cache transaction.
 
 For inputs too large to retain along with an input-aligned result array, `importManyKV` consumes
 an iterable in bounded atomic batches and returns counts instead:
@@ -167,12 +200,14 @@ const result = await importManyKV(sourceAsyncIterable, { batchSize: 10_000 })
 // { count: 1_000_000, batches: 100 }
 ```
 
-Each chunk is atomic; a later validation or persistence error does not roll back chunks that were
-already committed.
+Each key update is atomic; a later validation or persistence error does not roll back chunks that
+were already written. A batch spanning partitions is deliberately not a global transaction.
 
-Existing `.kvstore` files are migrated automatically and retained as `.kvstore.legacy`.
+Existing `.kvstore`, snapshot, and WAL caches are migrated automatically and retained as legacy
+backups. Cache writer logs are checksummed; incomplete or corrupt cache records are ignored as
+misses because cache values are rebuildable.
 
-Mutations are scheduled in strict arrival order for each key, including across Node.js processes
+Operations are scheduled in strict arrival order for each key, including across Node.js processes
 on the same host and local filesystem. Network filesystems are outside this guarantee. Priority is
 optional diagnostic metadata and does not change that ordering:
 
@@ -188,8 +223,12 @@ await setKV("session:user:42", { active: true }, {
 stopObserving()
 ```
 
-Lock events contain a SHA-256 key hash rather than the raw key or value. The default mutation
+Lock events contain a SHA-256 resource hash rather than the raw key or value. The default operation
 timeout is 30 seconds; supported priority labels are `foreground`, `normal`, and `background`.
+
+Documents, indexes, buckets, and collection lifecycle operations use the same shared-read and
+exclusive-write resource locks. Use `updateDocument(collection, id, updater)` for an atomic
+read-modify-write; `putDocument` remains an explicit last-write-wins replacement.
 
 ### Migrations
 

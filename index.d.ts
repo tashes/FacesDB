@@ -21,6 +21,11 @@ export function putDocument<T extends object>(
     document: string,
     documentobj: T,
 ): Promise<T & { _id: string }>;
+export function updateDocument<T extends object>(
+    collection: string,
+    document: string,
+    updater: (current: T & { _id: string }) => T,
+): Promise<T & { _id: string }>;
 
 export function deleteDocument(
     collection: string,
@@ -82,6 +87,7 @@ export interface KVMutationOptions {
     priority?: KVMutationPriority;
     timeoutMs?: number;
     namespace?: string;
+    durability?: "buffered" | "sync";
 }
 export interface KVLockEvent {
     type: "queued" | "acquired" | "released" | "timeout";
@@ -95,6 +101,9 @@ export interface KVLockEvent {
     timestamp: number;
     waitMs: number;
     holdMs?: number;
+    mode?: "shared" | "exclusive";
+    resourceHash?: string;
+    resourceCount?: number;
 }
 
 export function setKV<T = unknown>(
@@ -106,14 +115,41 @@ export function setManyKV<T = unknown>(
     entries: Array<readonly [string, T]>,
     options?: KVMutationOptions,
 ): Promise<T[]>;
-export function getKV<T = unknown>(key: string): Promise<T | undefined>;
+export function getKV<T = unknown>(
+    key: string,
+    options?: KVMutationOptions,
+): Promise<T | undefined>;
+export function getManyKV<T = unknown>(
+    keys: string[],
+    options?: KVMutationOptions,
+): Promise<Array<T | undefined>>;
 export function deleteKV(key: string, options?: KVMutationOptions): Promise<boolean>;
 export function deleteManyKV(
     keys: string[],
     options?: KVMutationOptions,
 ): Promise<boolean[]>;
-export function hasKV(key: string): Promise<boolean>;
+export function hasKV(key: string, options?: KVMutationOptions): Promise<boolean>;
+export function hasManyKV(
+    keys: string[],
+    options?: KVMutationOptions,
+): Promise<boolean[]>;
+export function updateKV<T = unknown>(
+    key: string,
+    updater: (current: T | undefined) => T,
+    options?: KVMutationOptions,
+): Promise<T>;
+export function getVersionedKV<T = unknown>(
+    key: string,
+    options?: KVMutationOptions,
+): Promise<{ value: T | undefined; revision: number }>;
+export function compareAndSetKV<T = unknown>(
+    key: string,
+    expectedRevision: number,
+    value: T,
+    options?: KVMutationOptions,
+): Promise<boolean>;
 export function observeKVLocks(listener: (event: KVLockEvent) => void): () => void;
+export function observeResourceLocks(listener: (event: KVLockEvent) => void): () => void;
 export interface KVImportOptions extends KVMutationOptions {
     batchSize?: number;
 }
