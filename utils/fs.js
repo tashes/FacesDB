@@ -15,6 +15,7 @@ import {
     readFileSync,
     renameSync,
     rmSync,
+    statSync,
     writeFileSync,
 } from "fs";
 import readline from "readline";
@@ -61,7 +62,11 @@ export function writejson(obj, ...parts) {
 }
 
 export function appendjsonl(obj, ...parts) {
-    return appendFileSync(path(...parts), JSON.stringify(obj) + "\n");
+    const destination = path(...parts);
+    const contents = Buffer.from(`${JSON.stringify(obj)}\n`);
+    const offset = existsSync(destination) ? statSync(destination).size : 0;
+    appendFileSync(destination, contents);
+    return { offset, length: contents.length };
 }
 
 function syncFolder(directory) {

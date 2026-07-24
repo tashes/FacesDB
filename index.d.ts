@@ -64,6 +64,11 @@ export function rankIndex<T extends Record<string, any> = Record<string, any>>(
     sorter: (a: T, b: T) => number,
     exclusion?: (entry: T) => boolean,
 ): Promise<void>;
+export function findIndexEntry<T = Record<string, unknown>>(
+    index: string,
+    collection: string,
+    document: string,
+): Promise<T | undefined>;
 
 export function viewIndexConfig(
     index: string,

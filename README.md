@@ -83,6 +83,34 @@ await rankIndex(
 Ranking replaces the index atomically. If reading, filtering, sorting, or writing
 fails, the existing index is left in place.
 
+Indexes keep their JSONL source alongside three rebuildable calculated sidecars:
+
+```text
+players/
+├── <document-id>.json
+├── scores.json
+├── scores.jsonl
+├── scores.offsets
+├── scores.lookup
+└── scores.lookup.delta
+```
+
+`scores.offsets` stores one 8-byte position per JSONL row, so page `n` can seek directly to
+`32 + n × 8` without reading earlier entries. `scores.lookup` stores fixed-width document-ID,
+offset, and length records for binary-search lookup; newly appended documents are recorded in the
+bounded delta until the sidecar is rebuilt. These files are derived, ignored by Git, rebuilt when
+stale, and never replace the JSON documents or JSONL index as the source of truth.
+
+```javascript
+import { findIndexEntry } from "facesdb"
+
+const indexed = await findIndexEntry(
+    "scores",
+    "players",
+    "0123456789abcdef01234567",
+)
+```
+
 ### Key-Value Store
 
 FacesDB ships with a lightweight, Redis-like key:value store. Every acknowledged change is

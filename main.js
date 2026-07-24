@@ -15,6 +15,7 @@ export { viewIndexConfig } from "./lib/viewIndexConfig.js"
 export { deleteIndex } from "./lib/deleteIndex.js"
 export { searchIndex } from "./lib/searchIndex.js"
 export { rankIndex } from "./lib/rankIndex.js"
+export { findIndexEntry } from './lib/indexSidecar.js'
 
 export { saveToBucket } from "./lib/saveToBucket.js"
 export { viewInBucket } from "./lib/viewInBucket.js"
