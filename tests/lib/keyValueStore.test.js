@@ -107,4 +107,24 @@ describe("keyValueStore", () => {
     await setKV("facesdb:kv:commit", "safe", { timeoutMs: 100 })
     expect(await getKV("facesdb:kv:commit")).toBe("safe")
   })
+
+  test("accepts mutation scheduling options", async () => {
+    const { setKV, deleteKV } = await loadStore()
+
+    expect(await setKV("scheduled", "value", {
+      priority: "background",
+      timeoutMs: 1_000,
+      namespace: "test",
+    })).toBe("value")
+    expect(await deleteKV("scheduled", { priority: "foreground" })).toBe(true)
+  })
+
+  test("rejects invalid mutation scheduling options without changing data", async () => {
+    const { setKV, getKV } = await loadStore()
+    await setKV("safe", "original")
+
+    await expect(setKV("safe", "changed", { priority: "urgent" }))
+      .rejects.toThrow("Priority")
+    expect(await getKV("safe")).toBe("original")
+  })
 })

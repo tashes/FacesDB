@@ -65,9 +65,20 @@ export function viewIndexConfig(
 
 export function deleteIndex(index: string, collection: string): Promise<void>;
 
+export type KVMutationPriority = "foreground" | "normal" | "background";
 export interface KVMutationOptions {
+    priority?: KVMutationPriority;
     timeoutMs?: number;
     namespace?: string;
+}
+export interface KVLockEvent {
+    type: "queued" | "acquired" | "released" | "timeout";
+    keyHash: string;
+    requestId: string;
+    priority: KVMutationPriority;
+    namespace?: string;
+    timestamp: number;
+    waitMs: number;
 }
 
 export function setKV<T = unknown>(
@@ -76,8 +87,6 @@ export function setKV<T = unknown>(
     options?: KVMutationOptions,
 ): Promise<T>;
 export function getKV<T = unknown>(key: string): Promise<T | undefined>;
-export function deleteKV(
-    key: string,
-    options?: KVMutationOptions,
-): Promise<boolean>;
+export function deleteKV(key: string, options?: KVMutationOptions): Promise<boolean>;
 export function hasKV(key: string): Promise<boolean>;
+export function observeKVLocks(listener: (event: KVLockEvent) => void): () => void;

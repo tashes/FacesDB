@@ -93,6 +93,25 @@ Values must be JSON-serializable so they can be safely written to disk, and ever
 
 Existing `.kvstore` files are migrated automatically and retained as `.kvstore.legacy`.
 
+Mutations are scheduled in strict arrival order for each key, including across Node.js processes
+on the same host and local filesystem. Network filesystems are outside this guarantee. Priority is
+optional diagnostic metadata and does not change that ordering:
+
+```javascript
+import { observeKVLocks, setKV } from "facesdb"
+
+const stopObserving = observeKVLocks((event) => console.log(event))
+await setKV("session:user:42", { active: true }, {
+    priority: "foreground",
+    timeoutMs: 5_000,
+    namespace: "sessions",
+})
+stopObserving()
+```
+
+Lock events contain a SHA-256 key hash rather than the raw key or value. The default mutation
+timeout is 30 seconds; supported priority labels are `foreground`, `normal`, and `background`.
+
 ### Migrations
 
 FacesDB can enforce a consistent document shape across an entire collection with the `migrate` helper. Pass the collection name and a callback that receives each document and returns its new shape.
