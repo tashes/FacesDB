@@ -66,7 +66,9 @@ await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 
 ### Key-Value Store
 
-FacesDB ships with a lightweight, Redis-like key:value store that keeps data in memory for fast access while persisting every change to the FacesDB data directory.
+FacesDB ships with a lightweight, Redis-like key:value store. Every acknowledged change is
+durably appended to a checksummed write-ahead log in the FacesDB data directory. Periodic
+snapshots keep startup fast, and separate local Node.js processes see one another's changes.
 
 ```javascript
 import { setKV, getKV, deleteKV, hasKV } from "facesdb"
@@ -81,6 +83,8 @@ await deleteKV("session:user:42")
 ```
 
 Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
+
+Existing `.kvstore` files are migrated automatically and retained as `.kvstore.legacy`.
 
 ### Migrations
 
