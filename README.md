@@ -135,12 +135,13 @@ an iterable in bounded atomic batches and returns counts instead:
 ```javascript
 import { importManyKV } from "facesdb"
 
-const result = await importManyKV(sourceAsyncIterable, { batchSize: 10_000 })
-// { count: 1_000_000, batches: 100 }
+const result = await importManyKV(sourceAsyncIterable)
+// { count: 1_000_000, batches: 1 }
 ```
 
-Each chunk is atomic; a later validation or persistence error does not roll back chunks that were
-already committed.
+The first import migrates existing KV values into an immutable segment and atomically enables
+disk-backed mode. Subsequent `getKV`, `setKV`, delete, and batch calls use hash-sharded derived
+offset indexes instead of retaining the complete KV dataset in a JavaScript `Map`.
 
 Existing `.kvstore` files are migrated automatically and retained as `.kvstore.legacy`.
 
