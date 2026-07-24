@@ -74,7 +74,13 @@ describe("rankIndex", () => {
             { _id: "middle", score: 2 },
         ]);
 
-        await rankIndex("scores", "players", (a, b) => b.score - a.score);
+        await rankIndex(
+            "scores",
+            "players",
+            (a, b) => b.score - a.score,
+            undefined,
+            { chunkSize: 2 },
+        );
 
         expect(await viewIndex("scores", "players", Infinity)).toEqual([
             { _id: "tie-a", score: 3 },
