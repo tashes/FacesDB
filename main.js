@@ -39,4 +39,3 @@ export {
   refreshCollectionIndex,
   viewSegmentDocument,
 } from './lib/segmentStore.js'
-export { createRankedIndex, viewRankedIndex } from './lib/segmentRank.js'

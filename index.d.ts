@@ -141,18 +141,3 @@ export function viewSegmentDocument<T = Record<string, unknown>>(
     collection: string,
     document: string,
 ): Promise<(T & { _id: string }) | undefined>;
-export interface RankedIndexSpec {
-    field: string;
-    order?: "ascending" | "descending";
-    exclude?: { field: string; equals: unknown };
-}
-export function createRankedIndex(
-    index: string,
-    collection: string,
-    specification: RankedIndexSpec,
-): Promise<void>;
-export function viewRankedIndex<T = Record<string, unknown>>(
-    index: string,
-    collection: string,
-    options?: { limit?: number },
-): Promise<Array<T & { _id: string }>>;
