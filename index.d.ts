@@ -86,7 +86,15 @@ export function setKV<T = unknown>(
     value: T,
     options?: KVMutationOptions,
 ): Promise<T>;
+export function setManyKV<T = unknown>(
+    entries: Array<readonly [string, T]>,
+    options?: KVMutationOptions,
+): Promise<T[]>;
 export function getKV<T = unknown>(key: string): Promise<T | undefined>;
 export function deleteKV(key: string, options?: KVMutationOptions): Promise<boolean>;
+export function deleteManyKV(
+    keys: string[],
+    options?: KVMutationOptions,
+): Promise<boolean[]>;
 export function hasKV(key: string): Promise<boolean>;
 export function observeKVLocks(listener: (event: KVLockEvent) => void): () => void;

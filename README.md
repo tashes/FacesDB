@@ -72,7 +72,14 @@ snapshots keep startup fast, and process-safe key locks serialize changes to the
 allowing unrelated keys in separate local Node.js processes to proceed independently.
 
 ```javascript
-import { setKV, getKV, deleteKV, hasKV } from "facesdb"
+import {
+    setKV,
+    setManyKV,
+    getKV,
+    deleteKV,
+    deleteManyKV,
+    hasKV,
+} from "facesdb"
 
 await setKV("session:user:42", { userId: 42, flags: ["beta"] })
 
@@ -87,9 +94,21 @@ await setKV("cache:homepage", { generatedAt: Date.now() }, {
     timeoutMs: 5_000,
     namespace: "cache",
 })
+
+await setManyKV([
+    ["session:user:42", { userId: 42 }],
+    ["session:user:84", { userId: 84 }],
+])
+
+const deleted = await deleteManyKV([
+    "session:user:42",
+    "session:user:84",
+]) // [true, true]
 ```
 
 Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
+Batch mutations validate all inputs before changing the store and persist the entire batch in
+one atomic commit.
 
 Existing `.kvstore` files are migrated automatically and retained as `.kvstore.legacy`.
 
