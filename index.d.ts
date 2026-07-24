@@ -109,7 +109,9 @@ export function deleteManyKV(
 ): Promise<boolean[]>;
 export function hasKV(key: string): Promise<boolean>;
 export function observeKVLocks(listener: (event: KVLockEvent) => void): () => void;
-export interface KVImportOptions extends KVMutationOptions {}
+export interface KVImportOptions extends KVMutationOptions {
+    batchSize?: number;
+}
 export function importManyKV<T = unknown>(
     entries: Iterable<readonly [string, T]> | AsyncIterable<readonly [string, T]>,
     options?: KVImportOptions,

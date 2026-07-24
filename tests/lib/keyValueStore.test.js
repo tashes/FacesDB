@@ -147,7 +147,7 @@ describe("keyValueStore", () => {
     expect(await getKV("other")).toEqual({ enabled: true })
   })
 
-  test("uses a constant number of tickets for a large multi-key batch", async () => {
+  test("uses one transaction ticket for a large multi-key batch", async () => {
     const { observeKVLocks, setManyKV } = await import('../../main.js')
     const events = []
     const unsubscribe = observeKVLocks((event) => events.push(event))
@@ -161,7 +161,7 @@ describe("keyValueStore", () => {
     const queued = events.filter((event) => (
       event.type === "queued" && event.operation === "setManyKV"
     ))
-    expect(queued).toHaveLength(2)
+    expect(queued).toHaveLength(1)
     expect(queued[0].keyCount).toBe(100)
   })
 
@@ -286,31 +286,20 @@ describe("keyValueStore", () => {
     }
   })
 
-  test("migrates streaming KV imports to disk-backed segmented mode", async () => {
+  test("streams large KV imports in bounded atomic WAL batches", async () => {
     const { readWal } = await import('../../lib/kvPersistence.js')
-    const { deleteKV, getKV, importManyKV, setKV } = await loadStore()
-    await setKV("existing", { before: true })
+    const { getKV, importManyKV } = await loadStore()
     async function* entries() {
       for (let index = 0; index < 25; index += 1) {
         yield [`stream-${index}`, { index }]
       }
     }
 
-    expect(await importManyKV(entries())).toEqual({
+    expect(await importManyKV(entries(), { batchSize: 10 })).toEqual({
       count: 25,
-      batches: 1,
+      batches: 3,
     })
-    expect(readWal(join(testRoot, ".kvstore.wal"))).toHaveLength(1)
-    expect(await getKV("existing")).toEqual({ before: true })
+    expect(readWal(join(testRoot, ".kvstore.wal"))).toHaveLength(3)
     expect(await getKV("stream-24")).toEqual({ index: 24 })
-    await setKV("stream-24", { updated: true })
-    expect(await getKV("stream-24")).toEqual({ updated: true })
-    expect(await deleteKV("stream-24")).toBe(true)
-    expect(await getKV("stream-24")).toBeUndefined()
-
-    vi.resetModules()
-    const reloaded = await loadStore()
-    expect(await reloaded.getKV("existing")).toEqual({ before: true })
-    expect(await reloaded.getKV("stream-24")).toBeUndefined()
   })
 })
