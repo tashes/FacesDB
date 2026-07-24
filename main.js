@@ -5,7 +5,7 @@ export { deleteCollection } from "./lib/deleteCollection.js"
 export { listCollectionDocuments } from "./lib/listCollectionDocuments.js"
 export { createDocument } from "./lib/createDocument.js"
 export { viewDocument } from "./lib/viewDocument.js"
-export { putDocument } from "./lib/putDocument.js"
+export { putDocument, updateDocument } from "./lib/putDocument.js"
 export { deleteDocument } from "./lib/deleteDocument.js"
 
 export { listCollectionIndexes } from "./lib/listCollectionIndexes.js"

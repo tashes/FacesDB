@@ -15,7 +15,7 @@ let checkDocumentobj = vi.spyOn(
 );
 let exists = vi.spyOn(await import("../../utils/fs"), "exists");
 let isFile = vi.spyOn(await import("../../utils/fs"), "isFile");
-let writejson = vi.spyOn(await import("../../utils/fs"), "writejson");
+let writejson = vi.spyOn(await import("../../utils/fs"), "atomicwritejson");
 let appendjsonl = vi.spyOn(await import("../../utils/fs"), "appendjsonl");
 let deletejsonl = vi.spyOn(await import("../../utils/fs"), "deletejsonl");
 let editjsonlraw = vi.spyOn(await import("../../utils/fs"), "editjsonlraw");
@@ -26,7 +26,7 @@ let listCollectionIndexes = vi.spyOn(
 );
 let viewIndexConfig = vi.spyOn(
     await import("../../lib/viewIndexConfig"),
-    "viewIndexConfig",
+    "readIndexConfig",
 );
 
 beforeEach(() => {
