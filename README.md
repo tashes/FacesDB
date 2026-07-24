@@ -68,7 +68,8 @@ await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 
 FacesDB ships with a lightweight, Redis-like key:value store. Every acknowledged change is
 durably appended to a checksummed write-ahead log in the FacesDB data directory. Periodic
-snapshots keep startup fast, and separate local Node.js processes see one another's changes.
+snapshots keep startup fast, and process-safe key locks serialize changes to the same key while
+allowing unrelated keys in separate local Node.js processes to proceed independently.
 
 ```javascript
 import { setKV, getKV, deleteKV, hasKV } from "facesdb"
@@ -80,6 +81,12 @@ const session = await getKV("session:user:42")
 
 const isCached = await hasKV("session:user:42") // true
 await deleteKV("session:user:42")
+
+// Mutations wait up to 30 seconds by default. Override the bounded wait when needed.
+await setKV("cache:homepage", { generatedAt: Date.now() }, {
+    timeoutMs: 5_000,
+    namespace: "cache",
+})
 ```
 
 Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
