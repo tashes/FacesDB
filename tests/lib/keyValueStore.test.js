@@ -17,6 +17,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.doUnmock('../../lib/keyValuePersistence.js')
   process.env.FS = originalFsRoot
   if (testRoot) {
     rmSync(testRoot, { recursive: true, force: true })
@@ -58,5 +59,137 @@ describe("keyValueStore", () => {
 
     const value = await store.getKV("cache")
     expect(value).toEqual({ value: "abc123" })
+  })
+
+  test("setManyKV commits values together and returns isolated input-aligned copies", async () => {
+    const { setManyKV, getKV } = await loadStore()
+    const first = { position: 1, tags: ["first"] }
+    const last = { position: 2, tags: ["last"] }
+
+    const stored = await setManyKV([
+      ["duplicate", first],
+      ["other", { enabled: true }],
+      ["duplicate", last],
+    ])
+
+    expect(stored).toEqual([first, { enabled: true }, last])
+    stored[2].tags.push("changed")
+    last.position = 3
+    expect(await getKV("duplicate")).toEqual({ position: 2, tags: ["last"] })
+    expect(await getKV("other")).toEqual({ enabled: true })
+  })
+
+  test("deleteManyKV reports each input result and handles duplicate keys", async () => {
+    const { setManyKV, deleteManyKV, hasKV } = await loadStore()
+    await setManyKV([
+      ["first", 1],
+      ["second", 2],
+    ])
+
+    const deleted = await deleteManyKV(["first", "missing", "first", "second"])
+
+    expect(deleted).toEqual([true, false, false, true])
+    expect(await hasKV("first")).toBe(false)
+    expect(await hasKV("second")).toBe(false)
+  })
+
+  test("validates and clones the full set batch before committing", async () => {
+    const { setKV, setManyKV, getKV } = await loadStore()
+    await setKV("existing", { value: "original" })
+    const cyclic = {}
+    cyclic.self = cyclic
+
+    await expect(setManyKV([
+      ["existing", { value: "changed" }],
+      ["invalid", cyclic],
+      ["later", true],
+    ])).rejects.toThrow("Cannot start setManyKV")
+
+    expect(await getKV("existing")).toEqual({ value: "original" })
+    expect(await getKV("later")).toBeUndefined()
+  })
+
+  test("validates the full delete batch before committing", async () => {
+    const { setManyKV, deleteManyKV, hasKV } = await loadStore()
+    await setManyKV([["keep", true]])
+
+    await expect(deleteManyKV(["keep", ""])).rejects.toThrow(
+      "Cannot start deleteManyKV",
+    )
+
+    expect(await hasKV("keep")).toBe(true)
+  })
+
+  test("empty batches are successful no-ops", async () => {
+    const { setManyKV, deleteManyKV } = await loadStore()
+
+    expect(await setManyKV([], { priority: "background" })).toEqual([])
+    expect(await deleteManyKV([], { namespace: "cache-rebuild" })).toEqual([])
+  })
+
+  test("persists a non-empty batch exactly once", async () => {
+    const persistence = await import('../../lib/keyValuePersistence.js')
+    const persist = vi.fn(persistence.persistKeyValueStore)
+    vi.doMock('../../lib/keyValuePersistence.js', () => ({
+      persistKeyValueStore: persist,
+    }))
+
+    const { setManyKV } = await loadStore()
+    const afterBootstrap = persist.mock.calls.length
+    await setManyKV(Array.from({ length: 50 }, (_, index) => [
+      `key-${index}`,
+      { index },
+    ]))
+
+    expect(persist.mock.calls.length - afterBootstrap).toBe(1)
+  })
+
+  test("keeps memory and disk unchanged when persistence fails", async () => {
+    const persistence = await import('../../lib/keyValuePersistence.js')
+    let calls = 0
+    const persist = vi.fn((...args) => {
+      calls += 1
+      if (calls === 3) throw new Error("injected write failure")
+      return persistence.persistKeyValueStore(...args)
+    })
+    vi.doMock('../../lib/keyValuePersistence.js', () => ({
+      persistKeyValueStore: persist,
+    }))
+
+    let store = await loadStore()
+    await store.setKV("existing", "original")
+    await expect(store.setManyKV([
+      ["existing", "changed"],
+      ["new", true],
+    ])).rejects.toThrow("injected write failure")
+
+    expect(await store.getKV("existing")).toBe("original")
+    expect(await store.getKV("new")).toBeUndefined()
+
+    await store.setManyKV([["after-failure", true]])
+    vi.resetModules()
+    vi.doUnmock('../../lib/keyValuePersistence.js')
+    store = await loadStore()
+    expect(await store.getKV("existing")).toBe("original")
+    expect(await store.getKV("new")).toBeUndefined()
+    expect(await store.getKV("after-failure")).toBe(true)
+  })
+
+  test("serializes concurrent batches without losing updates", async () => {
+    const { setManyKV, getKV } = await loadStore()
+    const batches = Array.from({ length: 10 }, (_, batch) => {
+      return Array.from({ length: 10 }, (_, item) => [
+        `batch-${batch}-item-${item}`,
+        { batch, item },
+      ])
+    })
+
+    await Promise.all(batches.map((entries) => setManyKV(entries)))
+
+    for (let batch = 0; batch < 10; batch += 1) {
+      for (let item = 0; item < 10; item += 1) {
+        expect(await getKV(`batch-${batch}-item-${item}`)).toEqual({ batch, item })
+      }
+    }
   })
 })

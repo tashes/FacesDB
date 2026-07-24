@@ -66,6 +66,19 @@ export function viewIndexConfig(
 export function deleteIndex(index: string, collection: string): Promise<void>;
 
 export function setKV<T = unknown>(key: string, value: T): Promise<T>;
+export interface KVMutationOptions {
+    priority?: "foreground" | "normal" | "background";
+    timeoutMs?: number;
+    namespace?: string;
+}
+export function setManyKV<T = unknown>(
+    entries: Array<readonly [string, T]>,
+    options?: KVMutationOptions,
+): Promise<T[]>;
 export function getKV<T = unknown>(key: string): Promise<T | undefined>;
 export function deleteKV(key: string): Promise<boolean>;
+export function deleteManyKV(
+    keys: string[],
+    options?: KVMutationOptions,
+): Promise<boolean[]>;
 export function hasKV(key: string): Promise<boolean>;

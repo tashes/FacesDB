@@ -69,7 +69,14 @@ await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 FacesDB ships with a lightweight, Redis-like key:value store that keeps data in memory for fast access while persisting every change to the FacesDB data directory.
 
 ```javascript
-import { setKV, getKV, deleteKV, hasKV } from "facesdb"
+import {
+    setKV,
+    setManyKV,
+    getKV,
+    deleteKV,
+    deleteManyKV,
+    hasKV,
+} from "facesdb"
 
 await setKV("session:user:42", { userId: 42, flags: ["beta"] })
 
@@ -78,9 +85,21 @@ const session = await getKV("session:user:42")
 
 const isCached = await hasKV("session:user:42") // true
 await deleteKV("session:user:42")
+
+await setManyKV([
+    ["session:user:42", { userId: 42 }],
+    ["session:user:84", { userId: 84 }],
+])
+
+const deleted = await deleteManyKV([
+    "session:user:42",
+    "session:user:84",
+]) // [true, true]
 ```
 
 Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
+Batch mutations validate all inputs before changing the store and persist the entire batch in
+one atomic commit.
 
 ### Migrations
 
