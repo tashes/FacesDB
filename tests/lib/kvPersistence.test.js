@@ -101,6 +101,22 @@ describe("KVCachePersistence", () => {
     expect(existsSync(join(root, ".kvstore.legacy"))).toBe(true)
   })
 
+  test("migrates the previous snapshot cache without requiring a rebuild", async () => {
+    const root = temporaryRoot()
+    writeFileSync(join(root, ".kvstore.snapshot"), JSON.stringify({
+      version: 1,
+      sequence: 7,
+      data: { cached: { retained: true } },
+    }))
+    writeFileSync(join(root, ".kvstore.wal"), "")
+    const persistence = new KVCachePersistence(root)
+    await persistence.initialize()
+    expect((await persistence.read(["cached"])).get("cached").value)
+      .toEqual({ retained: true })
+    expect(existsSync(join(root, ".kvstore.snapshot.legacy"))).toBe(true)
+    expect(existsSync(join(root, ".kvstore.wal.legacy"))).toBe(true)
+  })
+
   test("rotates and compacts one partition without blocking active logs", async () => {
     const root = temporaryRoot()
     const persistence = new KVCachePersistence(root, { rotateRecords: 2 })
@@ -118,6 +134,21 @@ describe("KVCachePersistence", () => {
     const records = await reader.read([first, second])
     expect(records.get(first).value).toBe(1)
     expect(records.get(second).value).toBe(2)
+  })
+
+  test("eventually removes compacted writer logs", async () => {
+    const root = temporaryRoot()
+    const persistence = new KVCachePersistence(root, {
+      rotateRecords: 1,
+      retireGraceMs: 0,
+    })
+    await persistence.initialize()
+    await persistence.append([{ key: "retire", revision: 1, operation: "set", value: true }])
+    await Promise.all([...persistence.compactions.values()])
+    const code = persistence.partition("retire")
+    const writers = join(root, ".kvstore-cache", "partitions", code, "writers")
+    expect(readdirSync(writers)).toEqual([])
+    expect((await persistence.read(["retire"])).get("retire").value).toBe(true)
   })
 
   test("preserves writes made while a sealed log is compacted", async () => {

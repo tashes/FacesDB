@@ -102,6 +102,14 @@ describe("keyValueStore", () => {
       .toEqual([true, false, true, true])
   })
 
+  test("bulk reads validate fully and accept empty input", async () => {
+    const { getManyKV, hasManyKV } = await loadStore()
+    expect(await getManyKV([])).toEqual([])
+    expect(await hasManyKV([])).toEqual([])
+    await expect(getManyKV(["valid", ""])).rejects.toThrow("Cannot start getManyKV")
+    await expect(hasManyKV(["valid", null])).rejects.toThrow("Cannot start hasManyKV")
+  })
+
   test("updateKV prevents lost updates across processes", async () => {
     const { getKV, setKV } = await loadStore()
     await setKV("counter", 0)
