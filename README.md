@@ -176,6 +176,22 @@ FacesDB builds hash-sharded byte-offset indexes under `users/.facesdb/`; these i
 by Git and rebuilt automatically after a pull or clone. Newer segments override older values, and
 deletions are represented by immutable tombstone segments.
 
+Ranked indexes over segmented collections use a serializable specification, so every node can
+rebuild the same derived ordering. New segments add sorted runs instead of re-sorting the entire
+collection:
+
+```javascript
+import { createRankedIndex, viewRankedIndex } from "facesdb"
+
+await createRankedIndex("scores", "users", {
+    field: "score",
+    order: "descending",
+    exclude: { field: "disqualified", equals: true },
+})
+
+const leaders = await viewRankedIndex("scores", "users", { limit: 20 })
+```
+
 ### Migrations
 
 FacesDB can enforce a consistent document shape across an entire collection with the `migrate` helper. Pass the collection name and a callback that receives each document and returns its new shape.
