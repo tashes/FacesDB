@@ -195,6 +195,15 @@ describe("keyValueStore", () => {
     expect(await deleteManyKV([], { namespace: "cache-rebuild" })).toEqual([])
   })
 
+  test("validates options even when a batch is empty", async () => {
+    const { setManyKV, deleteManyKV } = await loadStore()
+
+    await expect(setManyKV([], { priority: "urgent" }))
+      .rejects.toThrow("Cannot start setManyKV")
+    await expect(deleteManyKV([], { timeoutMs: -1 }))
+      .rejects.toThrow("Cannot start deleteManyKV")
+  })
+
   test("persists a non-empty batch exactly once", async () => {
     const { readWal } = await import('../../lib/kvPersistence.js')
     const { setManyKV } = await loadStore()
@@ -206,6 +215,16 @@ describe("keyValueStore", () => {
     const records = readWal(join(testRoot, ".kvstore.wal"))
     expect(records).toHaveLength(1)
     expect(records[0].operations).toHaveLength(50)
+  })
+
+  test("persists an all-missing delete batch as one atomic WAL record", async () => {
+    const { readWal } = await import('../../lib/kvPersistence.js')
+    const { deleteManyKV } = await loadStore()
+
+    expect(await deleteManyKV(["missing-one", "missing-two"])).toEqual([false, false])
+    const records = readWal(join(testRoot, ".kvstore.wal"))
+    expect(records).toHaveLength(1)
+    expect(records[0].operations).toEqual([])
   })
 
   test("keeps memory and disk unchanged when persistence fails", async () => {

@@ -84,8 +84,12 @@ export interface KVLockEvent {
     requestId: string;
     priority: KVMutationPriority;
     namespace?: string;
+    operation: string;
+    keyCount: number;
+    queueDepth: number;
     timestamp: number;
     waitMs: number;
+    holdMs?: number;
 }
 
 export function setKV<T = unknown>(

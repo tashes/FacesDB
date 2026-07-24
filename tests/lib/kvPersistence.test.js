@@ -120,6 +120,21 @@ describe("KVWalPersistence", () => {
     })
   })
 
+  test("preserves commits racing background compaction", async () => {
+    const root = temporaryRoot()
+    const persistence = new KVWalPersistence(root)
+    await persistence.initialize()
+    await persistence.commit([{ type: "set", key: "before", value: true }])
+
+    await Promise.all([
+      persistence.compact(),
+      persistence.commit([{ type: "set", key: "during", value: true }]),
+    ])
+
+    const reloaded = await new KVWalPersistence(root).read()
+    expect(Object.fromEntries(reloaded.store)).toEqual({ before: true, during: true })
+  })
+
   test("finishes a compaction interrupted after WAL rotation", async () => {
     const root = temporaryRoot()
     const persistence = new KVWalPersistence(root)

@@ -80,6 +80,7 @@ describe("KV lock scheduler", () => {
       ["secret:key"],
       { priority: "foreground", namespace: "sessions" },
       () => "done",
+      { operation: "setKV" },
     )
     unsubscribe()
     stopFailing()
@@ -87,6 +88,10 @@ describe("KV lock scheduler", () => {
     expect(events.map((event) => event.type)).toEqual(["queued", "acquired", "released"])
     expect(events.every((event) => event.priority === "foreground")).toBe(true)
     expect(events.every((event) => event.namespace === "sessions")).toBe(true)
+    expect(events.every((event) => event.operation === "setKV")).toBe(true)
+    expect(events.every((event) => event.keyCount === 1)).toBe(true)
+    expect(events.every((event) => event.queueDepth >= 1)).toBe(true)
+    expect(events.at(-1).holdMs).toBeGreaterThanOrEqual(0)
     expect(events.every((event) => event.keyHash.length === 64)).toBe(true)
     expect(JSON.stringify(events)).not.toContain("secret:key")
     expect(Object.isFrozen(events[0])).toBe(true)
@@ -125,6 +130,9 @@ describe("KV lock scheduler", () => {
     expect(error.code).toBe("KV_LOCK_TIMEOUT")
     expect(error.message).not.toContain("private")
     expect(error.namespace).toBe("cache")
+    expect(error.timeoutMs).toBe(20)
+    expect(error.waitMs).toBeGreaterThanOrEqual(20)
+    expect(error.queueDepth).toBeGreaterThanOrEqual(1)
     expect(events.some((event) => event.type === "timeout")).toBe(true)
 
     const hash = createHash("sha256").update("private").digest("hex")
@@ -146,6 +154,23 @@ describe("KV lock scheduler", () => {
     ])
 
     expect(completed).toHaveLength(2)
+  })
+
+  test("releases earlier keys when a later multi-key acquisition times out", async () => {
+    const { scheduleKVMutation } = await loadScheduler()
+    const keys = ["alpha", "beta"].sort((left, right) => {
+      const leftHash = createHash("sha256").update(left).digest("hex")
+      const rightHash = createHash("sha256").update(right).digest("hex")
+      return leftHash.localeCompare(rightHash)
+    })
+    const holder = scheduleKVMutation([keys[1]], {}, async () => delay(100))
+    await delay(10)
+
+    await expect(scheduleKVMutation(keys, { timeoutMs: 20 }, () => undefined))
+      .rejects.toMatchObject({ code: "KV_LOCK_TIMEOUT" })
+    await expect(scheduleKVMutation([keys[0]], { timeoutMs: 30 }, () => "released"))
+      .resolves.toBe("released")
+    await holder
   })
 
   test("recovers an abandoned waiter owned by a dead process", async () => {
