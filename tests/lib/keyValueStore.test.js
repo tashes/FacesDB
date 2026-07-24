@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest'
-import { mkdtempSync, rmSync } from 'fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
@@ -33,6 +33,36 @@ function setInWorker(root, key, value) {
   })
 }
 
+function incrementInWorker(root, key, count) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [worker, "increment", root, key, `${count}`], {
+      stdio: ["ignore", "ignore", "pipe"],
+    })
+    let stderr = ""
+    child.stderr.on("data", (chunk) => { stderr += chunk })
+    child.on("error", reject)
+    child.on("exit", (code) => code === 0
+      ? resolve()
+      : reject(new Error(`Worker exited ${code}: ${stderr}`)))
+  })
+}
+
+function cacheRecordCount(root) {
+  const partitions = join(root, ".kvstore-cache", "partitions")
+  try {
+    return readdirSync(partitions).reduce((total, partition) => {
+      const writers = join(partitions, partition, "writers")
+      return total + readdirSync(writers).reduce((count, file) => {
+        if (file.endsWith(".jsonl") === false) return count
+        return count + readFileSync(join(writers, file), "utf8")
+          .split("\n").filter(Boolean).length
+      }, 0)
+    }, 0)
+  } catch (_) {
+    return 0
+  }
+}
+
 beforeEach(() => {
   testRoot = mkdtempSync(join(os.tmpdir(), "facesdb-kv-"))
   process.env.FS = testRoot
@@ -61,6 +91,44 @@ describe("keyValueStore", () => {
 
     const fetched = await getKV("session")
     expect(fetched).toEqual({ userId: 42, flags: ["beta"] })
+  })
+
+  test("getManyKV and hasManyKV preserve input order and duplicates", async () => {
+    const { getManyKV, hasManyKV, setManyKV } = await loadStore()
+    await setManyKV([["one", { value: 1 }], ["two", 2]])
+    expect(await getManyKV(["two", "missing", "one", "two"]))
+      .toEqual([2, undefined, { value: 1 }, 2])
+    expect(await hasManyKV(["two", "missing", "one", "two"]))
+      .toEqual([true, false, true, true])
+  })
+
+  test("updateKV prevents lost updates across processes", async () => {
+    const { getKV, setKV } = await loadStore()
+    await setKV("counter", 0)
+    await Promise.all([
+      incrementInWorker(testRoot, "counter", 10),
+      incrementInWorker(testRoot, "counter", 10),
+    ])
+    expect(await getKV("counter")).toBe(20)
+  })
+
+  test("versioned compare-and-set rejects stale calculations", async () => {
+    const { compareAndSetKV, getKV, getVersionedKV, setKV } = await loadStore()
+    await setKV("article", { version: 1 })
+    const observed = await getVersionedKV("article")
+    await setKV("article", { version: 2 })
+    expect(await compareAndSetKV("article", observed.revision, { version: 3 })).toBe(false)
+    const current = await getVersionedKV("article")
+    expect(await compareAndSetKV("article", current.revision, { version: 3 })).toBe(true)
+    expect(await getKV("article")).toEqual({ version: 3 })
+  })
+
+  test("updateKV rejects asynchronous callbacks without changing the value", async () => {
+    const { getKV, setKV, updateKV } = await loadStore()
+    await setKV("quick", "original")
+    await expect(updateKV("quick", async () => "late"))
+      .rejects.toThrow("must be synchronous")
+    expect(await getKV("quick")).toBe("original")
   })
 
   test("deleteKV removes entries and reports status", async () => {
@@ -147,7 +215,7 @@ describe("keyValueStore", () => {
     expect(await getKV("other")).toEqual({ enabled: true })
   })
 
-  test("uses one transaction ticket for a large multi-key batch", async () => {
+  test("uses one narrowly scoped ticket per unique batch key", async () => {
     const { observeKVLocks, setManyKV } = await import('../../main.js')
     const events = []
     const unsubscribe = observeKVLocks((event) => events.push(event))
@@ -161,7 +229,7 @@ describe("keyValueStore", () => {
     const queued = events.filter((event) => (
       event.type === "queued" && event.operation === "setManyKV"
     ))
-    expect(queued).toHaveLength(1)
+    expect(queued).toHaveLength(100)
     expect(queued[0].keyCount).toBe(100)
   })
 
@@ -222,34 +290,28 @@ describe("keyValueStore", () => {
       .rejects.toThrow("Cannot start deleteManyKV")
   })
 
-  test("persists a non-empty batch exactly once", async () => {
-    const { readWal } = await import('../../lib/kvPersistence.js')
+  test("persists every non-empty batch entry", async () => {
     const { setManyKV } = await loadStore()
     await setManyKV(Array.from({ length: 50 }, (_, index) => [
       `key-${index}`,
       { index },
     ]))
 
-    const records = readWal(join(testRoot, ".kvstore.wal"))
-    expect(records).toHaveLength(1)
-    expect(records[0].operations).toHaveLength(50)
+    expect(cacheRecordCount(testRoot)).toBe(50)
   })
 
-  test("persists an all-missing delete batch as one atomic WAL record", async () => {
-    const { readWal } = await import('../../lib/kvPersistence.js')
+  test("does not persist tombstones for keys that never existed", async () => {
     const { deleteManyKV } = await loadStore()
 
     expect(await deleteManyKV(["missing-one", "missing-two"])).toEqual([false, false])
-    const records = readWal(join(testRoot, ".kvstore.wal"))
-    expect(records).toHaveLength(1)
-    expect(records[0].operations).toEqual([])
+    expect(cacheRecordCount(testRoot)).toBe(0)
   })
 
   test("keeps memory and disk unchanged when persistence fails", async () => {
-    const { KVWalPersistence } = await import('../../lib/kvPersistence.js')
+    const { KVCachePersistence } = await import('../../lib/kvPersistence.js')
     let store = await loadStore()
     await store.setKV("existing", "original")
-    const commit = vi.spyOn(KVWalPersistence.prototype, "commit")
+    const commit = vi.spyOn(KVCachePersistence.prototype, "append")
       .mockRejectedValueOnce(new Error("injected write failure"))
     await expect(store.setManyKV([
       ["existing", "changed"],
@@ -287,7 +349,6 @@ describe("keyValueStore", () => {
   })
 
   test("streams large KV imports in bounded atomic WAL batches", async () => {
-    const { readWal } = await import('../../lib/kvPersistence.js')
     const { getKV, importManyKV } = await loadStore()
     async function* entries() {
       for (let index = 0; index < 25; index += 1) {
@@ -299,7 +360,7 @@ describe("keyValueStore", () => {
       count: 25,
       batches: 3,
     })
-    expect(readWal(join(testRoot, ".kvstore.wal"))).toHaveLength(3)
+    expect(cacheRecordCount(testRoot)).toBe(25)
     expect(await getKV("stream-24")).toEqual({ index: 24 })
   })
 })

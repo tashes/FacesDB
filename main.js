@@ -25,11 +25,17 @@ export {
   setKV,
   setManyKV,
   getKV,
+  getManyKV,
   deleteKV,
   deleteManyKV,
   importManyKV,
   hasKV,
+  hasManyKV,
+  updateKV,
+  getVersionedKV,
+  compareAndSetKV,
 } from './lib/keyValueStore.js'
 export { observeKVLocks } from './lib/kvLockScheduler.js'
+export { observeResourceLocks } from './lib/resourceLockScheduler.js'
 
 export { migrate } from "./lib/migrate.js"
