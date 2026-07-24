@@ -163,32 +163,6 @@ stopObserving()
 Lock events contain a SHA-256 key hash rather than the raw key or value. The default mutation
 timeout is 30 seconds; supported priority labels are `foreground`, `normal`, and `background`.
 
-### Git-friendly segmented collections
-
-For large collections, stream documents into immutable JSONL segments instead of creating one
-file per document:
-
-```javascript
-import {
-    deleteSegmentDocuments,
-    importDocuments,
-    viewDocument,
-} from "facesdb"
-
-await importDocuments("users", sourceAsyncIterable, { nodeId: "worker-a" })
-const user = await viewDocument("users", "0123456789abcdef01234567")
-
-await deleteSegmentDocuments("users", ["0123456789abcdef01234567"], {
-    nodeId: "worker-a",
-})
-```
-
-Segment files under `users/segments/` are immutable and intended to be committed to Git. Every
-node writes uniquely named segments, so merges add files rather than appending to a shared file.
-FacesDB builds hash-sharded byte-offset indexes under `users/.facesdb/`; these indexes are ignored
-by Git and rebuilt automatically after a pull or clone. Newer segments override older values, and
-deletions are represented by immutable tombstone segments.
-
 ### Migrations
 
 FacesDB can enforce a consistent document shape across an entire collection with the `migrate` helper. Pass the collection name and a callback that receives each document and returns its new shape.

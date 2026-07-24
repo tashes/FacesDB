@@ -32,10 +32,3 @@ export {
 export { observeKVLocks } from './lib/kvLockScheduler.js'
 
 export { migrate } from "./lib/migrate.js"
-
-export {
-  importDocuments,
-  deleteSegmentDocuments,
-  refreshCollectionIndex,
-  viewSegmentDocument,
-} from './lib/segmentStore.js'

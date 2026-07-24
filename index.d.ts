@@ -116,28 +116,3 @@ export function importManyKV<T = unknown>(
     entries: Iterable<readonly [string, T]> | AsyncIterable<readonly [string, T]>,
     options?: KVImportOptions,
 ): Promise<{ count: number; batches: number }>;
-
-export interface SegmentMutationOptions extends KVMutationOptions {
-    nodeId?: string;
-}
-export interface SegmentImportResult {
-    segment: string | null;
-    count: number;
-}
-export function importDocuments<T extends object>(
-    collection: string,
-    documents: Iterable<T> | AsyncIterable<T>,
-    options?: SegmentMutationOptions,
-): Promise<SegmentImportResult>;
-export function deleteSegmentDocuments(
-    collection: string,
-    documentIds: Iterable<string> | AsyncIterable<string>,
-    options?: SegmentMutationOptions,
-): Promise<SegmentImportResult>;
-export function refreshCollectionIndex(
-    collection: string,
-): Promise<{ segments: number }>;
-export function viewSegmentDocument<T = Record<string, unknown>>(
-    collection: string,
-    document: string,
-): Promise<(T & { _id: string }) | undefined>;
