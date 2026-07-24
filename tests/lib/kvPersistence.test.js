@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'url'
 import { dirname, join, resolve } from 'path'
 import os from 'os'
 
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { KVWalPersistence, readWal } from '../../lib/kvPersistence.js'
 
@@ -180,5 +180,19 @@ describe("KVWalPersistence", () => {
     await runChild(root, "remote", { visible: true })
 
     expect((await persistence.read()).store.get("remote")).toEqual({ visible: true })
+  })
+
+  test("tails new WAL frames without rebuilding the cached snapshot state", async () => {
+    const root = temporaryRoot()
+    const reader = new KVWalPersistence(root)
+    await reader.initialize()
+    const loadState = vi.spyOn(reader, "loadState")
+
+    const writer = new KVWalPersistence(root)
+    await writer.initialize()
+    await writer.commit([{ type: "set", key: "incremental", value: true }])
+
+    expect((await reader.read()).store.get("incremental")).toBe(true)
+    expect(loadState).not.toHaveBeenCalled()
   })
 })

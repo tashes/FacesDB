@@ -147,6 +147,24 @@ describe("keyValueStore", () => {
     expect(await getKV("other")).toEqual({ enabled: true })
   })
 
+  test("uses one transaction ticket for a large multi-key batch", async () => {
+    const { observeKVLocks, setManyKV } = await import('../../main.js')
+    const events = []
+    const unsubscribe = observeKVLocks((event) => events.push(event))
+
+    await setManyKV(Array.from({ length: 100 }, (_, index) => [
+      `batch-ticket-${index}`,
+      index,
+    ]))
+    unsubscribe()
+
+    const queued = events.filter((event) => (
+      event.type === "queued" && event.operation === "setManyKV"
+    ))
+    expect(queued).toHaveLength(1)
+    expect(queued[0].keyCount).toBe(100)
+  })
+
   test("deleteManyKV reports each input result and handles duplicate keys", async () => {
     const { setManyKV, deleteManyKV, hasKV } = await loadStore()
     await setManyKV([
