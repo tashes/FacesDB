@@ -8,6 +8,8 @@ example.pdf
 *.offsets
 *.lookup
 *.lookup.delta
+.*.updates.rotated.jsonl
+.index-catalog.json
 .kvstore-cache/
 .locks/
 .kvstore.snapshot*

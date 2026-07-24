@@ -81,6 +81,20 @@ export function viewIndexConfig(
 ): Promise<Record<string, boolean>>;
 
 export function deleteIndex(index: string, collection: string): Promise<void>;
+export function compactIndex(index: string, collection: string): Promise<boolean>;
+
+export interface FacesDBMaintenanceOptions {
+    intervalMs?: number;
+    updateLimitBytes?: number;
+    staleRatio?: number;
+    minimumUpdateRecords?: number;
+}
+export function configureMaintenance(options?: FacesDBMaintenanceOptions): void;
+export function ensureMaintenanceWorker(): unknown;
+export function runMaintenance(
+    options?: FacesDBMaintenanceOptions & { force?: boolean },
+): Promise<Array<{ collection: string; index: string }>>;
+export function stopMaintenance(): Promise<void>;
 
 export type KVMutationPriority = "foreground" | "normal" | "background";
 export interface KVMutationOptions {

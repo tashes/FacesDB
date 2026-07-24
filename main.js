@@ -16,6 +16,13 @@ export { deleteIndex } from "./lib/deleteIndex.js"
 export { searchIndex } from "./lib/searchIndex.js"
 export { rankIndex } from "./lib/rankIndex.js"
 export { findIndexEntry } from './lib/indexSidecar.js'
+export { compactIndex } from './lib/indexCompaction.js'
+export {
+  configureMaintenance,
+  ensureMaintenanceWorker,
+  runMaintenance,
+  stopMaintenance,
+} from './lib/maintenance.js'
 
 export { saveToBucket } from "./lib/saveToBucket.js"
 export { viewInBucket } from "./lib/viewInBucket.js"

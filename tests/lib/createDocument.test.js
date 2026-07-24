@@ -95,7 +95,7 @@ describe("Normal run", () => {
                 prop3: true,
             },
             "collectionname",
-            "indexone.jsonl",
+            "indexone.updates.jsonl",
         );
         expect(appendjsonl).toHaveBeenNthCalledWith(
             2,
@@ -106,7 +106,7 @@ describe("Normal run", () => {
                 prop4: [200, 3384, 48, 909084],
             },
             "collectionname",
-            "indextwo.jsonl",
+            "indextwo.updates.jsonl",
         );
     });
 });

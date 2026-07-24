@@ -87,19 +87,28 @@ Indexes keep their JSONL source alongside three rebuildable calculated sidecars:
 
 ```text
 players/
+├── .index-catalog.json
 ├── <document-id>.json
 ├── scores.json
 ├── scores.jsonl
+├── scores.updates.jsonl
 ├── scores.offsets
 ├── scores.lookup
 └── scores.lookup.delta
 ```
+
+`scores.updates.jsonl` is an append-only journal of new index revisions and deletion tombstones.
+It is part of the current JSONL index state and can be committed with the base index. Ordinary
+document mutations append here instead of rewriting `scores.jsonl`.
 
 `scores.offsets` stores one 8-byte position per JSONL row, so page `n` can seek directly to
 `32 + n × 8` without reading earlier entries. `scores.lookup` stores fixed-width document-ID,
 offset, and length records for binary-search lookup; newly appended documents are recorded in the
 bounded delta until the sidecar is rebuilt. These files are derived, ignored by Git, rebuilt when
 stale, and never replace the JSON documents or JSONL index as the source of truth.
+
+The hidden index catalogue is derived and Git-ignored. It prevents FacesDB from enumerating every
+document filename merely to discover a collection's indexes.
 
 ```javascript
 import { findIndexEntry } from "facesdb"
@@ -229,6 +238,40 @@ timeout is 30 seconds; supported priority labels are `foreground`, `normal`, and
 Documents, indexes, buckets, and collection lifecycle operations use the same shared-read and
 exclusive-write resource locks. Use `updateDocument(collection, id, updater)` for an atomic
 read-modify-write; `putDocument` remains an explicit last-write-wins replacement.
+
+### Automatic index maintenance
+
+FacesDB starts an unreferenced Node worker thread lazily after the first indexed mutation. No
+separate service is required. The worker checks indexes every 30 seconds and compacts an update
+journal when it reaches 64 MiB or contains at least the greater of 1,000 records and 10% of the
+base index. A filesystem lease prevents maintenance workers from separate application processes
+from compacting the same database concurrently.
+
+Compaction briefly locks an index to rotate its journal, performs the expensive merge and sidecar
+calculation in the worker, then briefly locks again to publish the immutable replacement. Writes
+continue in a fresh journal while the merge runs.
+
+```javascript
+import {
+    compactIndex,
+    configureMaintenance,
+    runMaintenance,
+    stopMaintenance,
+} from "facesdb"
+
+configureMaintenance({
+    intervalMs: 30_000,
+    updateLimitBytes: 64 * 1024 * 1024,
+    staleRatio: 0.10,
+})
+
+await compactIndex("scores", "players") // force one index now
+await runMaintenance({ force: true })    // inspect and compact every index
+await stopMaintenance()                  // mainly useful for tests or controlled shutdown
+```
+
+Set `FACESDB_MAINTENANCE=off` for read-only or restricted environments where worker threads are
+not allowed.
 
 ### Migrations
 

@@ -4,9 +4,12 @@ import { resolve } from "path";
 export default defineConfig({
     build: {
         lib: {
-            entry: resolve(__dirname, "main.js"), // Adjust the entry point accordingly
+            entry: {
+                facesdb: resolve(__dirname, "main.js"),
+                "maintenance-worker": resolve(__dirname, "lib/maintenanceWorker.js"),
+            },
             name: "FacesDB",
-            fileName: (format) => `facesdb.${format}.js`,
+            fileName: (format, entryName) => `${entryName}.${format}.js`,
             formats: ["es", "cjs"],
         },
         target: "node23",
@@ -20,6 +23,8 @@ export default defineConfig({
                 "crypto",
                 "os",
                 "readline",
+                "url",
+                "worker_threads",
             ],
             output: {
                 globals: {
