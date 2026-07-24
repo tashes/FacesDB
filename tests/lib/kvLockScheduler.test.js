@@ -135,9 +135,9 @@ describe("KV lock scheduler", () => {
     expect(error.queueDepth).toBeGreaterThanOrEqual(1)
     expect(events.some((event) => event.type === "timeout")).toBe(true)
 
-    const hash = createHash("sha256").update("private").digest("hex")
-    const queue = join(testRoot, ".kv-locks", hash, "queue")
-    expect(readFileSync(join(testRoot, ".kv-locks", hash, "sequence"), "utf8")).toBe("2")
+    const hash = createHash("sha256").update("kv:private").digest("hex")
+    const queue = join(testRoot, ".locks", hash, "queue")
+    expect(readFileSync(join(testRoot, ".locks", hash, "sequence"), "utf8")).toBe("2")
     expect((await import('fs')).readdirSync(queue)).toEqual([])
   })
 
@@ -176,11 +176,11 @@ describe("KV lock scheduler", () => {
   test("recovers an abandoned waiter owned by a dead process", async () => {
     const { scheduleKVMutation } = await loadScheduler()
     const key = "recoverable"
-    const hash = createHash("sha256").update(key).digest("hex")
-    const queue = join(testRoot, ".kv-locks", hash, "queue")
+    const hash = createHash("sha256").update(`kv:${key}`).digest("hex")
+    const queue = join(testRoot, ".locks", hash, "queue")
     const { mkdirSync } = await import('fs')
     mkdirSync(queue, { recursive: true })
-    writeFileSync(join(testRoot, ".kv-locks", hash, "sequence"), "1")
+    writeFileSync(join(testRoot, ".locks", hash, "sequence"), "1")
     writeFileSync(join(queue, "0000000000000000-abandoned.json"), JSON.stringify({
       pid: 999_999_999,
       ownerToken: "abandoned",
