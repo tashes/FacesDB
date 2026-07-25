@@ -9,7 +9,9 @@ export default defineConfig({
                 "maintenance-worker": resolve(__dirname, "lib/maintenanceWorker.js"),
             },
             name: "FacesDB",
-            fileName: (format, entryName) => `${entryName}.${format}.js`,
+            fileName: (format, entryName) => format === "cjs"
+                ? `${entryName}.cjs`
+                : `${entryName}.${format}.js`,
             formats: ["es", "cjs"],
         },
         target: "node23",
