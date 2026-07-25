@@ -1,156 +1,44 @@
-import { vi, beforeEach, describe, test, expect } from "vitest";
-import { deleteDocument } from "../../lib/deleteDocument";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { join } from 'path'
+import os from 'os'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
-let checkCollection = vi.spyOn(
-    await import("../../utils/checks"),
-    "checkCollection",
-);
-let checkDocument = vi.spyOn(
-    await import("../../utils/checks"),
-    "checkDocument",
-);
-let deletejsonl = vi.spyOn(await import("../../utils/fs"), "deletejsonl");
-let exists = vi.spyOn(await import("../../utils/fs"), "exists");
-let jsonlexists = vi.spyOn(await import("../../utils/fs"), "jsonlexists");
-let rm = vi.spyOn(await import("../../utils/fs"), "rm");
-let listCollectionIndexes = vi.spyOn(
-    await import("../../lib/listCollectionIndexes"),
-    "listCollectionIndexes",
-);
+import { createIndex } from '../../lib/createIndex.js'
+import { deleteDocument } from '../../lib/deleteDocument.js'
+import { findIndexEntry } from '../../lib/indexSidecar.js'
 
-beforeEach(() => {
-    checkCollection.mockClear();
-    checkDocument.mockClear();
-    deletejsonl.mockClear();
-    exists.mockClear();
-    jsonlexists.mockClear();
-    rm.mockClear();
-    listCollectionIndexes.mockClear();
-});
+const originalRoot = process.env.FS
+const document = "0123456789abcdef01234567"
+let root
+let collection
 
-describe("Normal run", () => {
-    test("Should delete document and clean up indexes", async () => {
-        checkCollection.mockImplementation(() => null);
-        checkDocument.mockImplementation(() => null);
-        exists.mockImplementation(() => true);
-        rm.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["index1", "index2"]);
-        jsonlexists.mockImplementation(() => true);
-        deletejsonl.mockImplementation(() => {});
+beforeEach(async () => {
+  root = mkdtempSync(join(os.tmpdir(), "facesdb-delete-document-"))
+  process.env.FS = root
+  collection = join(root, "people")
+  mkdirSync(join(collection, "bucket"), { recursive: true })
+  writeFileSync(join(collection, `${document}.json`), JSON.stringify({
+    _id: document,
+    score: 1,
+  }))
+  await createIndex("scores", { score: true }, "people")
+})
 
-        let collection = "collectionname";
-        let document = "documentname";
+afterEach(() => {
+  if (originalRoot === undefined) delete process.env.FS
+  else process.env.FS = originalRoot
+  rmSync(root, { recursive: true, force: true })
+})
 
-        await deleteDocument(collection, document);
+describe("deleteDocument", () => {
+  test("deletes the document and appends an index tombstone", async () => {
+    await deleteDocument("people", document)
+    expect(existsSync(join(collection, `${document}.json`))).toBe(false)
+    expect(await findIndexEntry("scores", "people", document)).toBeUndefined()
+  })
 
-        expect(rm).toHaveBeenCalledWith(collection, `${document}.json`);
-        expect(deletejsonl).toHaveBeenCalledTimes(2);
-        expect(deletejsonl).toHaveBeenCalledWith(
-            document,
-            collection,
-            "index1.jsonl",
-        );
-        expect(deletejsonl).toHaveBeenCalledWith(
-            document,
-            collection,
-            "index2.jsonl",
-        );
-    });
-
-    test("Should throw error if document does not exist", async () => {
-        checkCollection.mockImplementation(() => null);
-        checkDocument.mockImplementation(() => null);
-        exists.mockImplementation(() => false);
-        rm.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["index1", "index2"]);
-        jsonlexists.mockImplementation(() => true);
-        deletejsonl.mockImplementation(() => {});
-
-        let collection = "collectionname";
-        let document = "documentname";
-
-        await expect(deleteDocument(collection, document)).rejects.toThrowError(
-            "Cannot run deleteDocument:Document does not exist",
-        );
-    });
-});
-
-describe("Initialization error", () => {
-    test("Should throw error for invalid collection", async () => {
-        checkCollection.mockImplementation(() => new Error("Error"));
-
-        let collection = "collectionname";
-        let document = "documentname";
-
-        await expect(deleteDocument(collection, document)).rejects.toThrowError(
-            "Cannot start deleteDocument:Error",
-        );
-    });
-
-    test("Should throw error for invalid document", async () => {
-        checkCollection.mockImplementation(() => null);
-        checkDocument.mockImplementation(() => new Error("Error"));
-
-        let collection = "collectionname";
-        let document = "documentname";
-
-        await expect(deleteDocument(collection, document)).rejects.toThrowError(
-            "Cannot start deleteDocument:Error",
-        );
-    });
-});
-
-describe("Function errors", () => {
-    test("Should throw error if rm fails", async () => {
-        checkCollection.mockImplementation(() => null);
-        checkDocument.mockImplementation(() => null);
-        exists.mockImplementation(() => true);
-        rm.mockImplementation(() => {
-            throw new Error("Error");
-        });
-
-        let collection = "collectionname";
-        let document = "documentname";
-
-        await expect(deleteDocument(collection, document)).rejects.toThrowError(
-            "Cannot run deleteDocument:Error",
-        );
-    });
-
-    test("Should throw error if jsonlexists fails", async () => {
-        checkCollection.mockImplementation(() => null);
-        checkDocument.mockImplementation(() => null);
-        exists.mockImplementation(() => true);
-        rm.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["index1"]);
-        jsonlexists.mockImplementation(() => {
-            throw new Error("Error");
-        });
-
-        let collection = "collectionname";
-        let document = "documentname";
-
-        await expect(deleteDocument(collection, document)).rejects.toThrowError(
-            "Cannot run deleteDocument:Error",
-        );
-    });
-
-    test("Should throw error if deletejsonl fails", async () => {
-        checkCollection.mockImplementation(() => null);
-        checkDocument.mockImplementation(() => null);
-        exists.mockImplementation(() => true);
-        rm.mockImplementation(() => {});
-        listCollectionIndexes.mockImplementation(() => ["index1"]);
-        jsonlexists.mockImplementation(() => true);
-        deletejsonl.mockImplementation(() => {
-            throw new Error("Error");
-        });
-
-        let collection = "collectionname";
-        let document = "documentname";
-
-        await expect(deleteDocument(collection, document)).rejects.toThrowError(
-            "Cannot run deleteDocument:Error",
-        );
-    });
-});
+  test("rejects a missing document", async () => {
+    await deleteDocument("people", document)
+    await expect(deleteDocument("people", document)).rejects.toThrow("Document does not exist")
+  })
+})

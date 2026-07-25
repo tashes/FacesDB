@@ -1,381 +1,126 @@
-import { vi, beforeEach, describe, test, expect } from "vitest";
-import { createIndex } from "../../lib/createIndex";
+import {
+    mkdirSync,
+    mkdtempSync,
+    existsSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    writeFileSync,
+} from "fs";
+import os from "os";
+import { join } from "path";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-let checkCollection = vi.spyOn(
-    await import("../../utils/checks"),
-    "checkCollection",
-);
-let checkIndex = vi.spyOn(await import("../../utils/checks"), "checkIndex");
-let checkIndexConfig = vi.spyOn(
-    await import("../../utils/checks"),
-    "checkIndexConfig",
-);
-let writejson = vi.spyOn(await import("../../utils/fs"), "writejson");
-let writefile = vi.spyOn(await import("../../utils/fs"), "writefile");
-let appendjsonl = vi.spyOn(await import("../../utils/fs"), "appendjsonl");
-let exists = vi.spyOn(await import("../../utils/fs"), "exists");
-let readfile = vi.spyOn(await import("../../utils/fs"), "readfile");
-let listCollectionDocuments = vi.spyOn(
-    await import("../../lib/listCollectionDocuments"),
-    "listCollectionDocuments",
-);
+import { createIndex } from "../../lib/createIndex.js";
+import { putDocument } from "../../lib/putDocument.js";
+
+const originalRoot = process.env.FS;
+let root;
+let collection;
+
+function id(index) {
+    return index.toString(16).padStart(24, "0");
+}
+
+function writeDocument(index, value) {
+    const document = id(index);
+    writeFileSync(
+        join(collection, `${document}.json`),
+        JSON.stringify({ _id: document, ...value }),
+    );
+    return document;
+}
 
 beforeEach(() => {
-    checkCollection.mockClear();
-    checkIndex.mockClear();
-    checkIndexConfig.mockClear();
-    writejson.mockClear();
-    writefile.mockClear();
-    appendjsonl.mockClear();
-    exists.mockClear();
-    readfile.mockClear();
-    listCollectionDocuments.mockClear();
-
-    writefile.mockImplementation(() => {});
+    root = mkdtempSync(join(os.tmpdir(), "facesdb-create-index-"));
+    process.env.FS = root;
+    collection = join(root, "people");
+    mkdirSync(collection);
+    mkdirSync(join(collection, "bucket"));
 });
 
-describe("Normal run", () => {
-    test("Should create index and save documents to the index", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
-
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) => {
-            return JSON.stringify(files[filename.split(".")[0]]);
-        });
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
-
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await createIndex(index, config, collection);
-
-        expect(writejson).toHaveBeenCalledWith(
-            {
-                prop1: true,
-                prop2: false,
-            },
-            collection,
-            "indexname.json",
-        );
-        expect(appendjsonl).toHaveBeenCalledTimes(1);
-        expect(appendjsonl).toHaveBeenNthCalledWith(
-            1,
-            { _id: "doc1", prop1: "WORKER", prop2: true },
-            "collectionname",
-            "indexname.jsonl",
-        );
-    });
-
-    test("Should throw error for pre-existing index", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
-
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => true);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
-
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot run createIndex:Index exists");
-    });
+afterEach(() => {
+    if (originalRoot === undefined) delete process.env.FS;
+    else process.env.FS = originalRoot;
+    rmSync(root, { recursive: true, force: true });
 });
 
-describe("Initialization error", () => {
-    test("Should throw error for invalid index", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
+describe("createIndex", () => {
+    test("streams qualifying documents into a published index", async () => {
+        const included = writeDocument(1, { name: "Ada", active: true });
+        writeDocument(2, { active: false });
 
-        checkIndex.mockImplementation(() => new Error("Error"));
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
+        await createIndex("names", { name: true, active: false }, "people");
 
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot start createIndex:Error");
+        expect(JSON.parse(readFileSync(join(collection, "names.json"), "utf8")))
+            .toEqual({ name: true, active: false });
+        expect(readFileSync(join(collection, "names.jsonl"), "utf8"))
+            .toBe(`${JSON.stringify({ _id: included, name: "Ada", active: true })}\n`);
     });
 
-    test("Should throw error for invalid index config", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
+    test("handles thousands of records without per-entry append files", async () => {
+        for (let index = 0; index < 5_000; index += 1) {
+            writeDocument(index, { score: index });
+        }
 
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => new Error("Error"));
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
+        await createIndex("scores", { score: true }, "people");
 
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot start createIndex:Error");
+        const lines = readFileSync(join(collection, "scores.jsonl"), "utf8")
+            .trim()
+            .split("\n");
+        expect(lines).toHaveLength(5_000);
     });
 
-    test("Should throw error for invalid collection", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
+    test("journals document changes made while an index is building", async () => {
+        const target = writeDocument(0, { score: 0 });
+        for (let index = 1; index < 5_000; index += 1) {
+            writeDocument(index, { score: index });
+        }
+        const building = createIndex("scores", { score: true }, "people");
+        const marker = join(collection, ".scores.building.json");
+        while (existsSync(marker) === false) {
+            await new Promise((resolve) => setTimeout(resolve, 1));
+        }
+        await putDocument("people", target, { score: 99_999 });
+        await building;
 
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => new Error("Error"));
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
+        const entry = readFileSync(join(collection, "scores.jsonl"), "utf8")
+            .split("\n")
+            .filter(Boolean)
+            .map(JSON.parse)
+            .find((candidate) => candidate._id === target);
+        expect(entry.score).toBe(99_999);
+        expect(existsSync(marker)).toBe(false);
+    }, 10_000);
 
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
+    test("rejects an existing index without changing it", async () => {
+        writeFileSync(join(collection, "names.json"), JSON.stringify({ old: true }));
+        writeFileSync(join(collection, "names.jsonl"), "old\n");
 
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot start createIndex:Error");
-    });
-});
-
-describe("Function errors", () => {
-    test("Should throw error for writejson error", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
-
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {
-            throw new Error("Error");
-        });
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
-
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot run createIndex:Error");
+        await expect(createIndex("names", { name: true }, "people"))
+            .rejects.toThrow("Cannot run createIndex:Index exists");
+        expect(readFileSync(join(collection, "names.jsonl"), "utf8")).toBe("old\n");
     });
 
-    test("Should throw error for appendjsonl error", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
-
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {
-            throw new Error("Error");
-        });
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename.split(".")[0]]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
-
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot run createIndex:Error");
+    test.each([
+        ["invalid-index", { name: true }, "people"],
+        ["names", { name: "yes" }, "people"],
+        ["names", { name: true }, "invalid collection"],
+    ])("validates index inputs", async (index, config, collectionName) => {
+        await expect(createIndex(index, config, collectionName))
+            .rejects.toThrow("Cannot start createIndex");
     });
 
-    test("Should throw error for exists error", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
+    test("leaves no published or temporary index after a build failure", async () => {
+        writeDocument(1, { name: "valid" });
+        writeFileSync(join(collection, `${id(2)}.json`), "not-json");
 
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => {
-            throw new Error("Error");
-        });
-        readfile.mockImplementation((_, filename) =>
-            JSON.stringify(files[filename]),
-        );
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
+        await expect(createIndex("names", { name: true }, "people"))
+            .rejects.toThrow("Cannot run createIndex");
 
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot run createIndex:Error");
-    });
-
-    test("Should throw error for readfile error", async () => {
-        let files = {
-            doc1: {
-                prop1: "WORKER",
-                prop2: true,
-                prop3: 37,
-            },
-            doc2: {
-                prop4: "MAN",
-                prop8: "WOMAN",
-            },
-        };
-
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation(() => {
-            throw new Error("Error");
-        });
-        listCollectionDocuments.mockImplementation(() => Object.keys(files));
-
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot run createIndex:Error");
-    });
-
-    test("Should throw error for listCollectionDocuments error", async () => {
-        checkIndex.mockImplementation(() => true);
-        checkIndexConfig.mockImplementation(() => true);
-        checkCollection.mockImplementation(() => true);
-        writejson.mockImplementation(() => {});
-        appendjsonl.mockImplementation(() => {});
-        exists.mockImplementation(() => false);
-        readfile.mockImplementation(() =>
-            JSON.stringify({ prop1: "value1", prop2: "value2" }),
-        );
-        listCollectionDocuments.mockImplementation(() => {
-            throw new Error("Error");
-        });
-
-        let index = "indexname";
-        let config = { prop1: true, prop2: false };
-        let collection = "collectionname";
-
-        await expect(
-            createIndex(index, config, collection),
-        ).rejects.toThrowError("Cannot run createIndex:Error");
+        expect(readdirSync(collection).filter((name) => name.startsWith("names")))
+            .toEqual([]);
+        expect(readdirSync(collection).some((name) => name.endsWith(".tmp")))
+            .toBe(false);
     });
 });

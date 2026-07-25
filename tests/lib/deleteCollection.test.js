@@ -5,13 +5,13 @@ let checkCollection = vi.spyOn(
     await import("../../utils/checks"),
     "checkCollection",
 );
-let rm = vi.spyOn(await import("../../utils/fs"), "rm");
+let rmConcurrent = vi.spyOn(await import("../../utils/fs"), "rmConcurrent");
 let exists = vi.spyOn(await import("../../utils/fs"), "exists");
 let isFolder = vi.spyOn(await import("../../utils/fs"), "isFolder");
 
 beforeEach(() => {
     checkCollection.mockClear();
-    rm.mockClear();
+    rmConcurrent.mockClear();
     exists.mockClear();
     isFolder.mockClear();
 });
@@ -19,7 +19,7 @@ beforeEach(() => {
 describe("Normal run", () => {
     test("Should delete collection if no errors", async () => {
         checkCollection.mockImplementation(() => null);
-        rm.mockImplementation(() => {});
+        rmConcurrent.mockImplementation(async () => {});
         exists.mockImplementation(() => true);
         isFolder.mockImplementation(() => true);
 
@@ -27,7 +27,7 @@ describe("Normal run", () => {
 
         await deleteCollection(collection);
 
-        await expect(rm).toHaveBeenCalledWith(collection);
+        await expect(rmConcurrent).toHaveBeenCalledWith(collection);
     });
 });
 
@@ -76,7 +76,7 @@ describe("Function errors", () => {
 
     test("Should throw error if rm fails", async () => {
         checkCollection.mockImplementation(() => null);
-        rm.mockImplementation(() => {
+        rmConcurrent.mockImplementation(async () => {
             throw new Error("Error");
         });
 

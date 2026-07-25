@@ -5,7 +5,7 @@ export { deleteCollection } from "./lib/deleteCollection.js"
 export { listCollectionDocuments } from "./lib/listCollectionDocuments.js"
 export { createDocument } from "./lib/createDocument.js"
 export { viewDocument } from "./lib/viewDocument.js"
-export { putDocument } from "./lib/putDocument.js"
+export { putDocument, updateDocument } from "./lib/putDocument.js"
 export { deleteDocument } from "./lib/deleteDocument.js"
 
 export { listCollectionIndexes } from "./lib/listCollectionIndexes.js"
@@ -14,11 +14,35 @@ export { viewIndex } from "./lib/viewIndex.js"
 export { viewIndexConfig } from "./lib/viewIndexConfig.js"
 export { deleteIndex } from "./lib/deleteIndex.js"
 export { searchIndex } from "./lib/searchIndex.js"
+export { rankIndex } from "./lib/rankIndex.js"
+export { findIndexEntry } from './lib/indexSidecar.js'
+export { compactIndex } from './lib/indexCompaction.js'
+export {
+  configureMaintenance,
+  ensureMaintenanceWorker,
+  runMaintenance,
+  stopMaintenance,
+} from './lib/maintenance.js'
 
 export { saveToBucket } from "./lib/saveToBucket.js"
 export { viewInBucket } from "./lib/viewInBucket.js"
 export { deleteFromBucket } from "./lib/deleteFromBucket.js"
 
-export { setKV, getKV, deleteKV, hasKV } from './lib/keyValueStore.js'
+export {
+  setKV,
+  setManyKV,
+  getKV,
+  getManyKV,
+  deleteKV,
+  deleteManyKV,
+  importManyKV,
+  hasKV,
+  hasManyKV,
+  updateKV,
+  getVersionedKV,
+  compareAndSetKV,
+} from './lib/keyValueStore.js'
+export { observeKVLocks } from './lib/kvLockScheduler.js'
+export { observeResourceLocks } from './lib/resourceLockScheduler.js'
 
 export { migrate } from "./lib/migrate.js"

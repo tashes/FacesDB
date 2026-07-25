@@ -5,3 +5,13 @@ trial
 trial.js
 example.pdf
 .DS_Store
+*.offsets
+*.lookup
+*.lookup.delta
+.*.updates.rotated.jsonl
+.index-catalog.json
+.kvstore-cache/
+.locks/
+.kvstore.snapshot*
+.kvstore.wal*
+.kvstore.legacy

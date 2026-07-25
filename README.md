@@ -64,12 +64,98 @@ console.log(updateddocument);
 await deleteDocument("collectionname", "A3CA8CE2EAffa8aae9Cd5A67");
 ```
 
-### Key-Value Store
+### Ranked Indexes
 
-FacesDB ships with a lightweight, Redis-like key:value store that keeps data in memory for fast access while persisting every change to the FacesDB data directory.
+Use `rankIndex` to reorder every entry in an existing index. An optional exclusion
+callback removes matching entries before the remaining entries are sorted.
 
 ```javascript
-import { setKV, getKV, deleteKV, hasKV } from "facesdb"
+import { rankIndex } from "facesdb"
+
+await rankIndex(
+    "scores",
+    "players",
+    (a, b) => b.score - a.score,
+    (player) => player.disqualified === true,
+)
+```
+
+Ranking replaces the index atomically. If reading, filtering, sorting, or writing
+fails, the existing index is left in place.
+
+Indexes keep their JSONL source alongside three rebuildable calculated sidecars:
+
+```text
+players/
+├── .index-catalog.json
+├── <document-id>.json
+├── scores.json
+├── scores.jsonl
+├── scores.updates.jsonl
+├── scores.offsets
+├── scores.lookup
+└── scores.lookup.delta
+```
+
+`scores.updates.jsonl` is an append-only journal of new index revisions and deletion tombstones.
+It is part of the current JSONL index state and can be committed with the base index. Ordinary
+document mutations append here instead of rewriting `scores.jsonl`.
+
+`scores.offsets` stores one 8-byte position per JSONL row, so page `n` can seek directly to
+`32 + n × 8` without reading earlier entries. `scores.lookup` stores fixed-width document-ID,
+offset, and length records for binary-search lookup; newly appended documents are recorded in the
+bounded delta until the sidecar is rebuilt. These files are derived, ignored by Git, rebuilt when
+stale, and never replace the JSON documents or JSONL index as the source of truth.
+
+The hidden index catalogue is derived and Git-ignored. It prevents FacesDB from enumerating every
+document filename merely to discover a collection's indexes.
+
+```javascript
+import { findIndexEntry } from "facesdb"
+
+const indexed = await findIndexEntry(
+    "scores",
+    "players",
+    "0123456789abcdef01234567",
+)
+```
+
+### Key-Value Store
+
+FacesDB ships with a restart-persistent, rebuildable key:value cache. Cache data lives in the
+Git-ignored `.kvstore-cache` directory and is divided into calculated lookup partitions. Each
+Node.js process owns its append-only writer logs, so normal operations never take a partition-wide
+lock. Cross-process FIFO locks are scoped to the individual key: reads wait for an active write to
+that key while unrelated keys proceed concurrently.
+
+```text
+.kvstore-cache/
+├── manifest.json
+└── partitions/
+    └── 7f/
+        ├── CURRENT
+        ├── base-<generation>.jsonl
+        ├── base-<generation>.lookup
+        └── writers/
+            ├── <next-process>.active.jsonl
+            └── <worker-process>.active.jsonl
+```
+
+Partitions are storage divisions, not lock scopes. Each process writes only to its own log.
+Compaction publishes immutable base generations and retires old logs after a grace period.
+
+```javascript
+import {
+    setKV,
+    setManyKV,
+    getKV,
+    getManyKV,
+    deleteKV,
+    deleteManyKV,
+    hasKV,
+    hasManyKV,
+    updateKV,
+} from "facesdb"
 
 await setKV("session:user:42", { userId: 42, flags: ["beta"] })
 
@@ -78,9 +164,114 @@ const session = await getKV("session:user:42")
 
 const isCached = await hasKV("session:user:42") // true
 await deleteKV("session:user:42")
+
+// Mutations wait up to 30 seconds by default. Override the bounded wait when needed.
+await setKV("cache:homepage", { generatedAt: Date.now() }, {
+    timeoutMs: 5_000,
+    namespace: "cache",
+})
+
+// Buffered persistence is the cache-oriented default. Request an fsync when required.
+await setKV("important-cache-key", { retained: true }, { durability: "sync" })
+
+await setManyKV([
+    ["session:user:42", { userId: 42 }],
+    ["session:user:84", { userId: 84 }],
+])
+
+const deleted = await deleteManyKV([
+    "session:user:42",
+    "session:user:84",
+]) // [true, true]
+
+const cached = await getManyKV(["session:user:42", "missing"])
+// [{ userId: 42 }, undefined]
+
+await updateKV("article:42:views", (views = 0) => views + 1)
 ```
 
+`updateKV` and `updateDocument` callbacks must be synchronous and quick. Perform expensive work
+first; use `getVersionedKV` and `compareAndSetKV` when a calculated result must be rejected if the
+state it was based on has changed.
+
 Values must be JSON-serializable so they can be safely written to disk, and every read returns a defensive copy so callers can mutate results without affecting the underlying store.
+Batch mutations validate all inputs before changing the cache, lock unique keys in deterministic
+order, and preserve input-aligned results. Atomicity is per key/partition rather than a global
+cache transaction.
+
+For inputs too large to retain along with an input-aligned result array, `importManyKV` consumes
+an iterable in bounded atomic batches and returns counts instead:
+
+```javascript
+import { importManyKV } from "facesdb"
+
+const result = await importManyKV(sourceAsyncIterable, { batchSize: 10_000 })
+// { count: 1_000_000, batches: 100 }
+```
+
+Each key update is atomic; a later validation or persistence error does not roll back chunks that
+were already written. A batch spanning partitions is deliberately not a global transaction.
+
+Existing `.kvstore`, snapshot, and WAL caches are migrated automatically and retained as legacy
+backups. Cache writer logs are checksummed; incomplete or corrupt cache records are ignored as
+misses because cache values are rebuildable.
+
+Operations are scheduled in strict arrival order for each key, including across Node.js processes
+on the same host and local filesystem. Network filesystems are outside this guarantee. Priority is
+optional diagnostic metadata and does not change that ordering:
+
+```javascript
+import { observeKVLocks, setKV } from "facesdb"
+
+const stopObserving = observeKVLocks((event) => console.log(event))
+await setKV("session:user:42", { active: true }, {
+    priority: "foreground",
+    timeoutMs: 5_000,
+    namespace: "sessions",
+})
+stopObserving()
+```
+
+Lock events contain a SHA-256 resource hash rather than the raw key or value. The default operation
+timeout is 30 seconds; supported priority labels are `foreground`, `normal`, and `background`.
+
+Documents, indexes, buckets, and collection lifecycle operations use the same shared-read and
+exclusive-write resource locks. Use `updateDocument(collection, id, updater)` for an atomic
+read-modify-write; `putDocument` remains an explicit last-write-wins replacement.
+
+### Automatic index maintenance
+
+FacesDB starts an unreferenced Node worker thread lazily after the first indexed mutation. No
+separate service is required. The worker checks indexes every 30 seconds and compacts an update
+journal when it reaches 64 MiB or contains at least the greater of 1,000 records and 10% of the
+base index. A filesystem lease prevents maintenance workers from separate application processes
+from compacting the same database concurrently.
+
+Compaction briefly locks an index to rotate its journal, performs the expensive merge and sidecar
+calculation in the worker, then briefly locks again to publish the immutable replacement. Writes
+continue in a fresh journal while the merge runs.
+
+```javascript
+import {
+    compactIndex,
+    configureMaintenance,
+    runMaintenance,
+    stopMaintenance,
+} from "facesdb"
+
+configureMaintenance({
+    intervalMs: 30_000,
+    updateLimitBytes: 64 * 1024 * 1024,
+    staleRatio: 0.10,
+})
+
+await compactIndex("scores", "players") // force one index now
+await runMaintenance({ force: true })    // inspect and compact every index
+await stopMaintenance()                  // mainly useful for tests or controlled shutdown
+```
+
+Set `FACESDB_MAINTENANCE=off` for read-only or restricted environments where worker threads are
+not allowed.
 
 ### Migrations
 

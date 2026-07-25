@@ -1,16 +1,22 @@
 import os from "os";
-import { join } from "path";
+import { randomUUID } from "crypto";
+import { basename, dirname, join } from "path";
 import {
     appendFileSync,
+    closeSync,
     createReadStream,
     createWriteStream,
     existsSync,
+    fsyncSync,
     lstatSync,
     mkdirSync,
+    openSync,
+    promises as fsPromises,
     readdirSync,
     readFileSync,
     renameSync,
     rmSync,
+    statSync,
     writeFileSync,
 } from "fs";
 import readline from "readline";
@@ -57,7 +63,114 @@ export function writejson(obj, ...parts) {
 }
 
 export function appendjsonl(obj, ...parts) {
-    return appendFileSync(path(...parts), JSON.stringify(obj) + "\n");
+    const destination = path(...parts);
+    const contents = Buffer.from(`${JSON.stringify(obj)}\n`);
+    const offset = existsSync(destination) ? statSync(destination).size : 0;
+    appendFileSync(destination, contents);
+    return { offset, length: contents.length };
+}
+
+function syncFolder(directory) {
+    const descriptor = openSync(directory, "r");
+    try {
+        fsyncSync(descriptor);
+    } finally {
+        closeSync(descriptor);
+    }
+}
+
+export function openjsonlwriter(...parts) {
+    const destination = path(...parts);
+    const directory = dirname(destination);
+    const temporary = join(
+        directory,
+        `.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    let descriptor = openSync(temporary, "wx");
+    let buffer = "";
+    let finished = false;
+
+    function flush() {
+        if (buffer.length === 0) return;
+        writeFileSync(descriptor, buffer);
+        buffer = "";
+    }
+
+    return {
+        write(obj) {
+            if (finished) throw new Error("JSONL writer is closed");
+            buffer += `${JSON.stringify(obj)}\n`;
+            if (buffer.length >= 1024 * 1024) flush();
+        },
+        commit() {
+            if (finished) throw new Error("JSONL writer is closed");
+            flush();
+            fsyncSync(descriptor);
+            closeSync(descriptor);
+            descriptor = undefined;
+            renameSync(temporary, destination);
+            syncFolder(directory);
+            finished = true;
+        },
+        abort() {
+            if (finished) return;
+            if (descriptor !== undefined) closeSync(descriptor);
+            descriptor = undefined;
+            rmSync(temporary, { force: true });
+            finished = true;
+        },
+    };
+}
+
+export function atomicwritejson(obj, ...parts) {
+    const destination = path(...parts);
+    const directory = dirname(destination);
+    const temporary = join(
+        directory,
+        `.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    let descriptor;
+    try {
+        descriptor = openSync(temporary, "wx");
+        writeFileSync(descriptor, JSON.stringify(obj));
+        fsyncSync(descriptor);
+        closeSync(descriptor);
+        descriptor = undefined;
+        renameSync(temporary, destination);
+        syncFolder(directory);
+    } catch (err) {
+        if (descriptor !== undefined) closeSync(descriptor);
+        rmSync(temporary, { force: true });
+        throw err;
+    }
+}
+
+export function replacejsonl(objs, ...parts) {
+    const destination = path(...parts);
+    const directory = dirname(destination);
+    const temporary = join(
+        directory,
+        `.${basename(destination)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    const contents = objs.length === 0
+        ? ""
+        : `${objs.map((obj) => JSON.stringify(obj)).join("\n")}\n`;
+    let descriptor;
+
+    try {
+        descriptor = openSync(temporary, "wx");
+        writeFileSync(descriptor, contents);
+        fsyncSync(descriptor);
+        closeSync(descriptor);
+        descriptor = undefined;
+        renameSync(temporary, destination);
+    } catch (e) {
+        if (descriptor !== undefined) {
+            closeSync(descriptor);
+        }
+        rmSync(temporary, { force: true });
+        throw e;
+    }
 }
 
 export async function deletejsonl(id, ...parts) {
@@ -198,4 +311,43 @@ export function rm(...parts) {
     return rmSync(path(...parts), {
         recursive: true,
     });
+}
+
+export async function rmConcurrent(...parts) {
+    const target = path(...parts);
+
+    async function removeTree(directory) {
+        const childDirectories = [];
+        let pendingFiles = [];
+        const handle = await fsPromises.opendir(directory);
+
+        async function flushFiles() {
+            if (pendingFiles.length === 0) return;
+            const current = pendingFiles;
+            pendingFiles = [];
+            await Promise.all(current.map((file) => fsPromises.unlink(file)));
+        }
+
+        try {
+            for await (const entry of handle) {
+                const child = join(directory, entry.name);
+                if (entry.isDirectory() && entry.isSymbolicLink() === false) {
+                    childDirectories.push(child);
+                } else {
+                    pendingFiles.push(child);
+                    if (pendingFiles.length >= 32) await flushFiles();
+                }
+            }
+            await flushFiles();
+        } finally {
+            await handle.close().catch((err) => {
+                if (err.code !== "ERR_DIR_CLOSED") throw err;
+            });
+        }
+
+        for (const child of childDirectories) await removeTree(child);
+        await fsPromises.rmdir(directory);
+    }
+
+    return await removeTree(target);
 }

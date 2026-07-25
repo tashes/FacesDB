@@ -1,16 +1,16 @@
 {
     "name": "facesdb",
-    "version": "0.0.19",
+    "version": "1.0.0",
     "description": "A local first database with sync capabilities with other instances.",
     "type": "module",
-    "main": "dist/facesdb.umd.js",
+    "main": "dist/facesdb.cjs",
     "module": "dist/facesdb.es.js",
     "types": "index.d.ts",
     "exports": {
         ".": {
             "types": "./index.d.ts",
             "import": "./dist/facesdb.es.js",
-            "require": "./dist/facesdb.umd.js"
+            "require": "./dist/facesdb.cjs"
         }
     },
     "files": [

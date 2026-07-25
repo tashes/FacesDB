@@ -12,6 +12,10 @@ let checkPageNumber = vi.spyOn(
 );
 let env = vi.spyOn(await import("../../utils/env"), "env");
 let pulljsonl = vi.spyOn(await import("../../utils/fs"), "pulljsonl");
+let readIndexRows = vi.spyOn(
+    await import("../../lib/indexSidecar"),
+    "readIndexRows",
+);
 
 beforeEach(() => {
     checkCollection.mockClear();
@@ -19,6 +23,7 @@ beforeEach(() => {
     checkPageNumber.mockClear();
     env.mockClear();
     pulljsonl.mockClear();
+    readIndexRows.mockClear();
 });
 
 describe("Normal run", () => {
@@ -28,7 +33,7 @@ describe("Normal run", () => {
         checkPageNumber.mockImplementation(() => null);
         env.mockImplementation(() => 10); // Assuming page size is 10
         const fakeIndexContent = [{ _id: "doc1" }, { _id: "doc2" }];
-        pulljsonl.mockImplementation(() => fakeIndexContent);
+        readIndexRows.mockImplementation(() => fakeIndexContent);
 
         const index = "indexname";
         const collection = "collectionname";
@@ -37,12 +42,12 @@ describe("Normal run", () => {
 
         expect(result).toEqual(fakeIndexContent);
         expect(env).toHaveBeenCalledWith("PAGESIZE");
-        expect(pulljsonl).toHaveBeenCalledWith(
-            10,
-            20,
+        expect(readIndexRows).toHaveBeenCalledWith(
+            "indexname",
             "collectionname",
-            "indexname.jsonl",
-        ); // pageNumber * pageSize, (pageNumber + 1) * pageSize
+            10,
+            10,
+        );
     });
 });
 
@@ -88,12 +93,12 @@ describe("Initialization error", () => {
 });
 
 describe("Function errors", () => {
-    test("Should throw error if pulljsonl fails", async () => {
+    test("Should throw error if sidecar lookup fails", async () => {
         checkCollection.mockImplementation(() => null);
         checkIndex.mockImplementation(() => null);
         checkPageNumber.mockImplementation(() => null);
         env.mockImplementation(() => 10); // Assuming page size is 10
-        pulljsonl.mockImplementation(() => {
+        readIndexRows.mockImplementation(() => {
             throw new Error("Error");
         });
 
