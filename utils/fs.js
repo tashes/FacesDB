@@ -11,6 +11,7 @@ import {
     lstatSync,
     mkdirSync,
     openSync,
+    promises as fsPromises,
     readdirSync,
     readFileSync,
     renameSync,
@@ -310,4 +311,43 @@ export function rm(...parts) {
     return rmSync(path(...parts), {
         recursive: true,
     });
+}
+
+export async function rmConcurrent(...parts) {
+    const target = path(...parts);
+
+    async function removeTree(directory) {
+        const childDirectories = [];
+        let pendingFiles = [];
+        const handle = await fsPromises.opendir(directory);
+
+        async function flushFiles() {
+            if (pendingFiles.length === 0) return;
+            const current = pendingFiles;
+            pendingFiles = [];
+            await Promise.all(current.map((file) => fsPromises.unlink(file)));
+        }
+
+        try {
+            for await (const entry of handle) {
+                const child = join(directory, entry.name);
+                if (entry.isDirectory() && entry.isSymbolicLink() === false) {
+                    childDirectories.push(child);
+                } else {
+                    pendingFiles.push(child);
+                    if (pendingFiles.length >= 32) await flushFiles();
+                }
+            }
+            await flushFiles();
+        } finally {
+            await handle.close().catch((err) => {
+                if (err.code !== "ERR_DIR_CLOSED") throw err;
+            });
+        }
+
+        for (const child of childDirectories) await removeTree(child);
+        await fsPromises.rmdir(directory);
+    }
+
+    return await removeTree(target);
 }
